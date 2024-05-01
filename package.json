@@ -1,0 +1,30 @@
+{
+  "name": "mdf-reader",
+  "version": "1.0.0",
+  "description": "Reads MDF YAML and returns helpful accessors",
+  "main": "src/index.js",
+  "type": "module",
+  "module": "src/index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/majensen/mdf-reader.git"
+  },
+  "keywords": [
+    "graph",
+    "model",
+    "MDF"
+  ],
+  "author": "Mark A. Jensen",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/majensen/mdf-reader/issues"
+  },
+  "homepage": "https://github.com/majensen/mdf-reader#readme",
+  "dependencies": {
+    "axios": "^1.6.8",
+    "js-yaml": "^4.1.0"
+  }
+}
