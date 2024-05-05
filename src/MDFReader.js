@@ -1,3 +1,4 @@
+//import axios from 'axios';
 axios = require('axios');
 // import yaml from 'js-yaml';
 yaml = require('js-yaml');
@@ -6,135 +7,312 @@ class MDFReader {
   constructor(...sources) {
     this.mdf = {};
     this.handle = null;
-    this.nodes = null;
-    this.edges = null;
-    this.props = null;
-    this.tags = {};
+    this.nodes_ = null;
+    this.edges_ = null;
+    this.props_ = null;
+    this.terms_ = null;
+    this.tags_ = {};
     this.sources = [];
-    readSources(this, sources);
+    this._loaded = readSources(this, ...sources);
   }
 
-  edges() {
+  nodes(...hdl) {
+    if (hdl.length > 0) {
+      let ret = Object.entries(this.nodes_)
+        .filter( (kv) => hdl.includes(kv[0]) )
+          .map((kv) => { return kv[1]; });
+      return ret.length === 1 ? ret[0] : ret;
+    }
+    else {
+      return Object.keys(this.nodes_)
+        .sort()
+        .map( (p) => this.nodes_[p] );
+    }
   }
 
-  props() {
+  edges(...hdl) {
+    if (hdl.length > 0) {
+      let ret = Object.entries(this.edges_)
+        .filter( (kv) => hdl.includes(kv[0]) )
+          .map((kv) => { return kv[1]; });
+      return ret.length === 1 ? ret[0] : ret;
+    }
+    else {
+      return Object.keys(this.edges_)
+        .sort()
+        .map( (e) => this.edges_[e] );
+    }
   }
 
-  terms() {
+  props(...hdl) {
+    if (hdl.length > 0) {
+      let ret = Object.entries(this.props_)
+        .filter( (kv) => hdl.includes(kv[0]) )
+          .map((kv) => { return kv[1]; });
+      return ret.length === 1 ? ret[0] : ret;
+    }
+    else {
+      return Object.keys(this.props_)
+        .sort()
+        .map( (p) => this.props_[p] );
+    }
+  }
+
+  terms(...hdl) {
+    if (hdl.length > 0) {
+      let ret = Object.entries(this.terms_)
+        .filter( (kv) => hdl.includes(kv[0]) )
+          .map((kv) => { return kv[1]; });
+      return ret.length === 1 ? ret[0] : ret;
+    }
+    else {
+      return Object.keys(this.terms_)
+        .sort()
+        .map( (p) => this.terms_[p] );
+    }
+  }
+
+  tag_kvs() {
+    let ret = [];
+    Object.keys(this.tags_)
+      .sort()
+      .map( (k) => {
+        Object.keys(this.tags_[k])
+          .sort()
+          .map( (v) => {
+            ret.push([k, v]);
+          });
+      });
+    return ret;
+  }
+
+  tagged_items(key, value) {
+    if (this.tags_[key]) {
+      if (this.tags_[key][value]) {
+        return this.tags_[key][value];
+      }
+      else {
+        return null;
+      }
+    }
+    else {
+      return null;
+    }
+  }
+
+}
+
+exports.MDFReader = MDFReader;
+
+function myProps(...nm) {
+  if (nm.length > 0) {
+    return Object.entries(this.props_)
+      .filter( (kv) => nm.includes(kv[0]) )
+      .map((kv) => { return kv[1]; });
+  }
+  else {
+    return Object.values(this.props_);
   }
 }
 
-async function readSources(obj, sources) {
+function readSources(obj, ...sources) {
+  let gets = [];
   for (const source of sources) {
     if (typeof(source) === "string") {
       if (/^https?:\/\//.test(source)) {
-        const resp = await axios.get(source);
-        obj.sources.push(yaml.load(resp.data));
+        gets.push( axios.get(source)
+                   .then( (r) => { return r.data; } )
+                   .catch( (e) => { throw new Error(e); }) );
+        // const resp = await axios.get(source);
+        // obj.sources.push(yaml.load(resp.data));
       }
       else {
         obj.sources.push(yaml.load(source));
       }
     }
-    else if (typeof(source) === "object") {
-      obj.sources.push(source);
-    }
+    // else if (typeof(source) === "object") {
+    //   obj.sources.push(source);
+    // }
     else {
       throw new Error("string, url, or plain object required");
     }
   }
-  for (const y of obj.sources) {
-    obj.mdf = {...obj.mdf, ...y};
-  }
-  await parse(obj);
+  return Promise.allSettled(gets)
+    .then( (results) => {
+      results.forEach( (result) => {
+        obj.sources.push(yaml.load(result.value));
+      });
+    })
+    .then( () => {
+      for (const y of obj.sources) {
+        obj.mdf = {...obj.mdf, ...y};
+      }
+    })
+    .then( () => { parse(obj) } )
+    .catch( (e) => console.error("FAIL",e) );
 }
 
-async function parse(obj) {
+function parse(obj) {
   const updateTags = (key, value, item) => {
-    if (!obj.tags[key]) {
-      obj.tags[key] = {};
+    if (!obj.tags_[key]) {
+      obj.tags_[key] = {};
     }
-    if (!obj.tags[key][value]) {
-      obj.tags[key][value] = [];
+    if (!obj.tags_[key][value]) {
+      obj.tags_[key][value] = [];
     }
-    obj.tags[key][value].push(item);
-  }
+    obj.tags_[key][value].push(item);
+  };
+  
+  const updateTerms = (handle, spec) => {
+    let {Value:value, Origin:origin_name,
+         Desc:desc, Code:origin_id,
+         Version:origin_version, Definition:definition,
+         Handle: exp_handle } = spec; // obj.mdf.Terms[tm];
+    if (!handle) {
+      if (!exp_handle) {
+        handle = value;
+      }
+      else {
+        handle = exp_handle;
+      }
+    }
+    obj.terms_[handle] = {
+      _kind: "Term",
+      handle,
+      value,
+      origin_name,
+      origin_id,
+      origin_version,
+      definition,
+    };
+    return handle;
+  };
+  
   if (!obj.handle) {
     let {Handle, Version} = obj.mdf;
     obj.handle = Handle;
     obj.version = Version;
   }
-  if (!obj.props) {
-    obj.props = {};
+  if (!obj.terms_) {
+    // Handle, Value, Origin, Code, Definition, Version
+    obj.terms_ = {};
+    for (const tm in obj.mdf.Terms) {
+      updateTerms(tm, obj.mdf.Terms[tm]);
+    }
+  }
+  if (!obj.props_) {
+    obj.props_ = {};
     if (obj.mdf.PropDefinitions) {
       for (const pr in obj.mdf.PropDefinitions) {
         let handle = pr;
         let { Type: type, Enum:pvs, Req: is_required,
               Desc: desc, Key: is_key, Nul: is_nullable,
-              Deprecated: is_deprecated, Tags: tags } = obj.mdf.PropDefinitions[pr];
+              Deprecated: is_deprecated, Strict: is_strict,
+              Tags: tags, Term: terms,
+            } = obj.mdf.PropDefinitions[pr];
         if (pvs && !type) {
           type = "value_set";
         }
         let spec = { handle, desc, type,
                      is_required, is_key, is_nullable,
-                     is_deprecated, tags, _kind:"Property" };
-        obj.props[pr] = spec;
+                     is_deprecated, is_strict,
+                     tags, _kind:"Property" };
+        obj.props_[pr] = spec;
         if (pvs) {
-          obj.props[pr]["pvs"] = pvs;
+          obj.props_[pr]["pvs"] = pvs;
         }
         if (tags) {
           for (const key in tags) {
-            updateTags(key, tags[key], obj.props[pr])
+            updateTags(key, tags[key], obj.props_[pr])
           }
         }
-      }
-    }
-  }
-  if (!obj.nodes) {
-    obj.nodes = {};
-    for (const nd in obj.mdf.Nodes) {
-      obj.nodes[nd] = {_kind:"Node"};
-      obj.nodes[nd]["props"] = {};
-      for (const pr of obj.mdf.Nodes[nd].Props) {
-        obj.nodes[nd].props[pr] = obj.props[pr];
-      }
-      if (obj.mdf.Nodes[nd].Tags) {
-        obj.nodes[nd]["tags"] = obj.mdf.Nodes[nd].Tags;
-        for (const key in obj.mdf.Nodes[nd].Tags) {
-          updateTags(key, obj.mdf.Nodes[nd].Tags[key], obj.nodes[nd] )
+        if (terms) {
+          let term_list = []
+          terms.forEach( (t) => {
+            term_list.push(
+              updateTerms(null, t)
+            );
+          });
+          obj.props_[pr].terms = term_list;
         }
       }
     }
   }
-  if (!obj.edges) {
-    obj.edges = {};
+  if (!obj.nodes_) {
+    obj.nodes_ = {};
+    for (const nd in obj.mdf.Nodes) {
+      let spec = obj.mdf.Nodes[nd];
+      obj.nodes_[nd] = {_kind:"Node", handle:nd};
+      obj.nodes_[nd].props_ = {};
+      if (spec.Props) {
+        for (const pr of spec.Props) {
+          obj.nodes_[nd].props_[pr] = obj.props_[pr];
+        }
+      }
+      obj.nodes_[nd].props = myProps;
+
+      if (spec.Tags) {
+        obj.nodes_[nd]["tags"] = spec.Tags;
+        for (const key in spec.Tags) {
+          updateTags(key, spec.Tags[key], obj.nodes_[nd] )
+        }
+      }
+      if (spec.Term) {
+        let term_list = [];
+        spec.Term.forEach( (t) => {
+          term_list.push(
+            updateTerms(null, t)
+          );
+        });
+        obj.nodes[nd].terms = term_list;
+      }
+
+    }
+  }
+  if (!obj.edges_) {
+    obj.edges_ = {};
     for (const edge_nm in obj.mdf.Relationships) {
       let spec = obj.mdf.Relationships[edge_nm];
       let mul_def = spec.Mul;
-      obj.edges[edge_nm] = {_kind:"EdgeType"}
-      for (const end_pr of spec.Ends) {
-        let {Mul, Tags:tags} = end_pr;
-        obj.edges[edge_nm][end_pr["Src"]] = {};
-        obj.edges[edge_nm][end_pr["Src"]][end_pr["Dst"]] =
-          {multiplicity: (Mul ? Mul : mul_def), _kind:"Edge", tags};
-        obj.edges[edge_nm][end_pr["Src"]][end_pr["Dst"]].props = {};
-        for (const pr in obj.mdf.Relationships[edge_nm].Props) {
-          obj.edges[edge_nm][end_pr["Src"]][end_pr["Dst"]].props[pr] =
-            obj.props[pr];
+      obj.edges_[edge_nm] = {_kind:"EdgeType", handle:edge_nm};
+      for (const end_pair of spec.Ends) {
+        let {Mul, Tags:tags} = end_pair;
+        obj.edges_[edge_nm][end_pair["Src"]] = {};
+        obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]] =
+          {multiplicity: (Mul ? Mul : mul_def), _kind:"Edge",
+           handle:`${edge_nm}:${end_pair.Src}:${end_pair.Dst}`, tags};
+        obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].props_ = {};
+        if (obj.mdf.Relationships[edge_nm].Props) {
+          for (const pr in obj.mdf.Relationships[edge_nm].Props) {
+            obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].props_[pr] =
+              obj.props_[pr];
+          }
         }
+        obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].props = myProps;
         if (tags) {
           for (const key in tags) {
-            updateTags(key, tags[key], obj.edges[edge_nm][end_pr["Src"]][end_pr["Dst"]])
+            updateTags(key, tags[key], obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]])
           }
         }
       }
       if (spec.Tags) {
-        obj.edges[edge_nm]["tags"] = spec.Tags;
-        for (const key in obj.edges[edge_nm]["tags"]) {
-          updateTags(key, obj.edges[edge_nm]["tags"][key], obj.edges[edge_nm]);
+        obj.edges_[edge_nm]["tags"] = spec.Tags;
+        for (const key in obj.edges_[edge_nm]["tags"]) {
+          updateTags(key, obj.edges_[edge_nm]["tags"][key], obj.edges_[edge_nm]);
         }
+      }
+      if (spec.Term) {
+        let term_list = [];
+        spec.Term.forEach( (t) => {
+          term_list.push(
+            updateTerms(null, t)
+          );
+        });
+        obj.edges_[edge_nm].terms = term_list;
       }
     }
   }
 }
 
 // m = new MDFReader("https://github.com/CBIIT/ctdc-model/raw/master/model-desc/ctdc_model_file.yaml","https://github.com/CBIIT/ctdc-model/raw/master/model-desc/ctdc_model_properties_file.yaml")
+// m = new MDFReader("https://github.com/CBIIT/icdc-model-tool/raw/master/model-desc/icdc-model.yml","https://github.com/CBIIT/icdc-model-tool/raw/master/model-desc/icdc-model-props.yml")
