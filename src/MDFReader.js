@@ -100,6 +100,34 @@ class MDFReader {
     }
   }
 
+  outgoing_edges(node_hdl) {
+    let ret = [];
+    Object.entries(this.edges_)
+      .filter( (kvt) => kvt[1][node_hdl] )
+      .forEach( (kvt) => {
+        Object.values(kvt[1][node_hdl])
+          .forEach( (kvd) => {
+            ret.push(kvd);
+          });
+      });
+    return ret;
+  }
+
+  incoming_edges(node_hdl) {
+    let ret = [];
+    Object.entries(this.edges_)
+      .forEach( (kvt) => {
+        Object.entries(kvt[1])
+          .forEach( (kvs) => {
+            Object.entries(kvs[1])
+              .filter( (kvd) => kvd[0] == node_hdl )
+              .forEach( (kvd) => {
+                ret.push(kvd[1]);
+              });
+          });
+      });
+    return ret;
+  }
 }
 
 exports.MDFReader = MDFReader;
@@ -280,7 +308,9 @@ function parse(obj) {
         obj.edges_[edge_nm][end_pair["Src"]] = {};
         obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]] =
           {multiplicity: (Mul ? Mul : mul_def), _kind:"Edge",
-           handle:`${edge_nm}:${end_pair.Src}:${end_pair.Dst}`, tags};
+           handle:`${edge_nm}:${end_pair.Src}:${end_pair.Dst}`,
+           src: end_pair.Src, dst: end_pair.Dst,
+           tags};
         obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].props_ = {};
         if (obj.mdf.Relationships[edge_nm].Props) {
           for (const pr in obj.mdf.Relationships[edge_nm].Props) {

@@ -1,12 +1,17 @@
 let { MDFReader } = require('../src/MDFReader');
 
-const yamls = [
+const ccdi_yamls = [
   "https://github.com/CBIIT/ccdi-model/raw/main/model-desc/ccdi-model.yml",
   "https://github.com/CBIIT/ccdi-model/raw/main/model-desc/ccdi-model-props.yml",
   "https://github.com/CBIIT/ccdi-model/raw/main/model-desc/terms.yaml",  
 ];
 
-const mdf = new MDFReader(...yamls);
+const icdc_yamls = [
+  "https://github.com/CBIIT/icdc-model-tool/raw/master/model-desc/icdc-model.yml",
+  "https://github.com/CBIIT/icdc-model-tool/raw/master/model-desc/icdc-model-props.yml",
+];
+
+let mdf = new MDFReader(...ccdi_yamls);
 
 function chill(ms) {
   return new Promise(r => setTimeout(r, ms));
@@ -59,4 +64,25 @@ it('nodes have own props()', () => {
         .toStrictEqual(['sample_id', 'anatomic_site', 'participant_age_at_collection',
                          'sample_tumor_status', 'tumor_classification',
                          'sample_description', 'id']);
+});
+
+let mdf2 = new MDFReader(...icdc_yamls);
+
+it('tags are present', async () => {
+  await chill(1200);
+  expect(mdf2.tag_kvs().length).toBeGreaterThan(10);
+});
+
+it('get some tagged items', () => {
+  expect(mdf2.tagged_items('Category','study').length).toBeGreaterThan(3);
+  expect(mdf2.tagged_items('Category','study').map( x => x._kind )
+         .every( x => x === 'Node')).toBeTruthy();
+});
+
+it('get outgoing and incoming edges', () => {
+  expect(mdf2.outgoing_edges('sample').map( x => x.src )
+         .every( x => x === 'sample')).toBeTruthy();
+  expect(mdf2.incoming_edges('sample').map( x => x.dst )
+         .every( x => x === 'sample')).toBeTruthy();
+  
 });
