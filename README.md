@@ -4,16 +4,19 @@ MDF Reader is a small JavaScript class that will parse a set of [model descripti
 
 ## Installation
 
-``
+```bash
 $ npm install mdf-reader
-``
+```
 
 ## Usage
 
+```js
     const model = new MDFReader(yaml_string1, yaml_string2, ...);
+```
 
 Synchronous example:
 
+```js
     const { MDFReader } = require('mdf-reader');
     const fs = require('node:fs');
     
@@ -36,9 +39,11 @@ Synchronous example:
         console.log("Value: %s\n  Definition: %s",
                     t.value, t.definition);
     });
+```
 
 Async example:
 
+```js
     import axios from 'axios';
     import { MDFReader } from 'mdf-reader';
     
@@ -72,17 +77,20 @@ Async example:
             console.log("Node name: %s", n.handle);
             });
         });
+```
     
 ## Objects
 
 Nodes, properties, edges, and terms are represented by plain JS Objects. Each Object has a set of standard keys which correspond to similar keys in MDF for each entity:
 
+```js
     { _kind = 'Node', handle                    } = node;
     { _kind = 'Edge', handle, src, dst          } = edge;
     { _kind = 'Property', handle, type, is_key, 
       is_nullable, is_deprecated, is_strict     } = prop;
     { _kind = 'Term', handle, origin_name,
       origin_version, definition                } = term;
+```
 
 In general, such Objects are returned by the API calls described below.
 
