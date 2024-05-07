@@ -1,9 +1,8 @@
-//import axios from 'axios';
-axios = require('axios');
-// import yaml from 'js-yaml';
-yaml = require('js-yaml');
+import yaml from 'js-yaml';
+// yaml = require('js-yaml');
 
-class MDFReader {
+export class MDFReader {
+//class MDFReader {
   constructor(...sources) {
     this.mdf = {};
     this.handle = null;
@@ -13,7 +12,7 @@ class MDFReader {
     this.terms_ = null;
     this.tags_ = {};
     this.sources = [];
-    this._loaded = readSources(this, ...sources);
+    readSources(this, ...sources);
   }
 
   nodes(...hdl) {
@@ -130,8 +129,6 @@ class MDFReader {
   }
 }
 
-exports.MDFReader = MDFReader;
-
 function myProps(...nm) {
   if (nm.length > 0) {
     return Object.entries(this.props_)
@@ -146,38 +143,21 @@ function myProps(...nm) {
 function readSources(obj, ...sources) {
   let gets = [];
   for (const source of sources) {
-    if (typeof(source) === "string") {
-      if (/^https?:\/\//.test(source)) {
-        gets.push( axios.get(source)
-                   .then( (r) => { return r.data; } )
-                   .catch( (e) => { throw new Error(e); }) );
-        // const resp = await axios.get(source);
-        // obj.sources.push(yaml.load(resp.data));
-      }
-      else {
-        obj.sources.push(yaml.load(source));
-      }
+    if (source.constructor.name === "String") {
+      let mdf = yaml.load(source);
+      obj.sources.push( mdf );
     }
-    // else if (typeof(source) === "object") {
-    //   obj.sources.push(source);
-    // }
+    else if (typeof(source) === "object") {
+      obj.sources.push(source);
+    }
     else {
-      throw new Error("string, url, or plain object required");
+      throw new Error("string or plain object required");
     }
   }
-  return Promise.allSettled(gets)
-    .then( (results) => {
-      results.forEach( (result) => {
-        obj.sources.push(yaml.load(result.value));
-      });
-    })
-    .then( () => {
-      for (const y of obj.sources) {
-        obj.mdf = {...obj.mdf, ...y};
-      }
-    })
-    .then( () => { parse(obj) } )
-    .catch( (e) => console.error("FAIL",e) );
+  for (const y of obj.sources) {
+    obj.mdf = {...obj.mdf, ...y};
+  }
+  parse(obj);
 }
 
 function parse(obj) {
@@ -251,11 +231,11 @@ function parse(obj) {
         }
         if (tags) {
           for (const key in tags) {
-            updateTags(key, tags[key], obj.props_[pr])
+            updateTags(key, tags[key], obj.props_[pr]);
           }
         }
         if (terms) {
-          let term_list = []
+          let term_list = [];
           terms.forEach( (t) => {
             term_list.push(
               updateTerms(null, t)
@@ -282,7 +262,7 @@ function parse(obj) {
       if (spec.Tags) {
         obj.nodes_[nd]["tags"] = spec.Tags;
         for (const key in spec.Tags) {
-          updateTags(key, spec.Tags[key], obj.nodes_[nd] )
+          updateTags(key, spec.Tags[key], obj.nodes_[nd]);
         }
       }
       if (spec.Term) {
@@ -321,7 +301,7 @@ function parse(obj) {
         obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].props = myProps;
         if (tags) {
           for (const key in tags) {
-            updateTags(key, tags[key], obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]])
+            updateTags(key, tags[key], obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]]);
           }
         }
       }
@@ -344,5 +324,5 @@ function parse(obj) {
   }
 }
 
-// m = new MDFReader("https://github.com/CBIIT/ctdc-model/raw/master/model-desc/ctdc_model_file.yaml","https://github.com/CBIIT/ctdc-model/raw/master/model-desc/ctdc_model_properties_file.yaml")
-// m = new MDFReader("https://github.com/CBIIT/icdc-model-tool/raw/master/model-desc/icdc-model.yml","https://github.com/CBIIT/icdc-model-tool/raw/master/model-desc/icdc-model-props.yml")
+//exports.MDFReader = MDFReader;
+
