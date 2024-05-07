@@ -98,10 +98,10 @@ In general, such Objects are returned by the API calls described below.
 
 ### MDFReader instance methods:
 
-* nodes(), nodes('mynode'), nodes('a\_node', ...)
-* edges(), edges('has\_a:node1:node2'), edges('has\_a:node1:node2', 'is\_a:node3:node4', ...)
-* props(), props('prop1'), props('a\_prop', ...)
-* terms(), terms('myterm'), terms('a\_term", ...)
+* `nodes()`, `nodes('mynode')`, `nodes('a\_node', ...)`
+* `edges()`, `edges('has_a:node1:node2')`, `edges('has_a:node1:node2', 'is_a:node3:node4', ...)`
+* `props()`, `props('prop1')`, `props('a_prop', ...)`
+* `terms()`, `terms('myterm')`, `terms('a_term", ...)`
 
 Without arguments, return as an Array the entire set of nodes, props, edges, or terms (in Object form above) for a model.
 
@@ -109,16 +109,16 @@ With one entity handle argument, return the Object or null if no such object exi
 
 With multiple handles as arguments, return an Array of the Objects corresponding to the handles.
 
-* outgoing\_edges(node\_handle)
-* incoming\_edges(node\_handle)
+* `outgoing_edges(node_handle)`
+* `incoming_edges(node_handle)`
 
 Return an Array of edges for which the specified node is the source or destination, respectively.
 
-* tagged\_items(key, value)
+* `tagged_items(key, value)`
 
 Returns an Array of Objects tagged in the MDF with the key-value pair, or an empty Array if no such tag exists. Use the `_kind` key to determine the entity type for each Object.
 
-* tag\_kvs(), tag\_kvs(key)
+* `tag_kvs()`, `tag_kvs(key)`
 
 Returns an Array of Arrays of the form `[key, value]`. Without an argument, 
 all `[key, value]` pairs present in the model are returned. With a key argument, pairs
@@ -126,23 +126,25 @@ having the given key are returned.
 
 Example: to get all nodes that have a Category tag:
 
-    let cat_nodes = model.tag_kvs('Category')
-                      .flatMap( (kv) => model.tagged_items(...kv) )
+```js
+ let cat_nodes = model.tag_kvs('Category').flatMap( (kv) => model.tagged_items(...kv) )
+```
 
 ### Object own methods
 
-* node.props(), edge.props()
+* `node.props()`, `edge.props()`
 
 Return an Array of a node's or edge's properties, if any.
 
-* node.terms(), edge.terms(), prop.terms()
+* `node.terms()`, `edge.terms()`, `prop.terms()`
 
 Return an Array of term Objects annotating these entities in the MDF.
 
-* prop.valueSet()
+* `prop.valueSet()`
 
 Return an Array of acceptable values if a property has an acceptable value list or "Enum" (i.e., if `prop.type == 'value_set'`). Note these are the actual values to be used in data, not the term handles. So, for this MDF:
 
+```yaml
     PropDefinition:
       breed:
         Enum:
@@ -153,12 +155,15 @@ Return an Array of acceptable values if a property has an acceptable value list 
         Value: Beagle
       german_shepherd:
         Value: German Shepherd
+```
 
 the following would hold:
 
+```js
     model.props('breed').valueSet() == ['Beagle', 'German Shepherd']
+```
 
-* item.tags()
+* `item.tags()`
 
 Return an Array of `[key, value]` pairs tagging the item (node, property, or edge).
 
