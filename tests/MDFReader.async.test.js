@@ -67,7 +67,7 @@ it('knows its entities', () => {
 
 it('understands annotation Terms',  () => {
   return p.then( () => {
-    expect(mdf.props('cytogenomic_platform').terms)
+    expect(mdf.props('cytogenomic_platform').terms().map((t)=>t.handle))
       .toStrictEqual(['Cytogenomic Analysis Instrumentation Text','cytogenomic_platform']);
     expect(mdf.terms('Cytogenomic Analysis Instrumentation Text').origin_name)
       .toBe('caDSR');

@@ -1,9 +1,6 @@
 import yaml from 'js-yaml';
 
-// yaml = require('js-yaml');
-
 class MDFReader {
-//class MDFReader {
   constructor(...sources) {
     this.mdf = {};
     this.handle = null;
@@ -21,7 +18,7 @@ class MDFReader {
       let ret = Object.entries(this.nodes_)
         .filter( (kv) => hdl.includes(kv[0]) )
           .map((kv) => { return kv[1]; });
-      return ret.length === 1 ? ret[0] : ret;
+      return (ret.length === 1 ? ret[0] : ret);
     }
     else {
       return Object.keys(this.nodes_)
@@ -35,7 +32,7 @@ class MDFReader {
       let ret = Object.entries(this.edges_)
         .filter( (kv) => hdl.includes(kv[0]) )
           .map((kv) => { return kv[1]; });
-      return ret.length === 1 ? ret[0] : ret;
+      return (ret.length === 1 ? ret[0] : ret);
     }
     else {
       return Object.keys(this.edges_)
@@ -49,7 +46,7 @@ class MDFReader {
       let ret = Object.entries(this.props_)
         .filter( (kv) => hdl.includes(kv[0]) )
           .map((kv) => { return kv[1]; });
-      return ret.length === 1 ? ret[0] : ret;
+      return (ret.length === 1 ? ret[0] : ret);
     }
     else {
       return Object.keys(this.props_)
@@ -63,7 +60,7 @@ class MDFReader {
       let ret = Object.entries(this.terms_)
         .filter( (kv) => hdl.includes(kv[0]) )
           .map((kv) => { return kv[1]; });
-      return ret.length === 1 ? ret[0] : ret;
+      return (ret.length === 1 ? ret[0] : ret);
     }
     else {
       return Object.keys(this.terms_)
@@ -72,9 +69,11 @@ class MDFReader {
     }
   }
 
-  tag_kvs() {
+  tag_kvs(...key) {
     let ret = [];
+    let [key_] = key;
     Object.keys(this.tags_)
+      .filter( (k) => key_ ? k === key_ : true )
       .sort()
       .map( (k) => {
         Object.keys(this.tags_[k])
@@ -92,11 +91,11 @@ class MDFReader {
         return this.tags_[key][value];
       }
       else {
-        return null;
+        return [];
       }
     }
     else {
-      return null;
+      return [];
     }
   }
 
@@ -130,17 +129,6 @@ class MDFReader {
   }
 }
 
-function myProps(...nm) {
-  if (nm.length > 0) {
-    return Object.entries(this.props_)
-      .filter( (kv) => nm.includes(kv[0]) )
-      .map((kv) => { return kv[1]; });
-  }
-  else {
-    return Object.values(this.props_);
-  }
-}
-
 function readSources(obj, ...sources) {
   for (const source of sources) {
     if (source.constructor.name === "String") {
@@ -161,6 +149,38 @@ function readSources(obj, ...sources) {
 }
 
 function parse(obj) {
+
+  function myProps(...nm) {
+    if (nm.length > 0) {
+      let ret = Object.entries(this.props_)
+          .filter( (kv) => nm.includes(kv[0]) )
+          .map((kv) => { return kv[1]; });
+      return (ret.length === 1 ? ret[0] : ret);
+    }
+    else {
+      return Object.values(this.props_);
+    }
+  }
+
+  function myTags() {
+    return this.taglist_ ? this.taglist_ : [];
+  }
+
+  function myValueSet() {
+    if (this.pvs) {
+      return this.pvs.map( (h) => obj.terms_[h].value )
+    }
+    else { return []; }
+  }
+  
+  function myTerms() {
+    if (this.termlist_) {
+      return this.termlist_
+        .map( (t) => obj.terms_[t] );
+    }
+    else { return []; }
+  }
+
   const updateTags = (key, value, item) => {
     if (!obj.tags_[key]) {
       obj.tags_[key] = {};
@@ -169,6 +189,11 @@ function parse(obj) {
       obj.tags_[key][value] = [];
     }
     obj.tags_[key][value].push(item);
+    if (!item.taglist_) {
+      item.taglist_ = [];
+      item.tags = myTags;
+    }
+    item.taglist_.push([key, value]);
   };
   
   const updateTerms = (handle, spec) => {
@@ -216,18 +241,25 @@ function parse(obj) {
         let { Type: type, Enum:pvs, Req: is_required,
               Desc: desc, Key: is_key, Nul: is_nullable,
               Deprecated: is_deprecated, Strict: is_strict,
-              Tags: tags, Term: terms,
+              Tags: tags, Term: terms, 
             } = obj.mdf.PropDefinitions[pr];
-        if (pvs && !type) {
-          type = "value_set";
-        }
         let spec = { handle, desc, type,
                      is_required, is_key, is_nullable,
                      is_deprecated, is_strict,
-                     tags, _kind:"Property" };
+                     tags, _kind:"Property",
+                   };
         obj.props_[pr] = spec;
         if (pvs) {
+          if (!type) { type = "value_set"; }
           obj.props_[pr]["pvs"] = pvs;
+          pvs.forEach( (v) => {
+            if (!obj.terms_[v]) {
+              //              obj.terms_[v] = { handle:v, value:v, _kind:"Term" };
+              updateTerms(null, {Value:v, Origin:"<Local>"});
+            }
+          });
+          // obj.props_[pr].terms_ = obj.terms_; // kludge
+          obj.props_[pr].valueSet = myValueSet;
         }
         if (tags) {
           for (const key in tags) {
@@ -235,14 +267,16 @@ function parse(obj) {
           }
         }
         if (terms) {
-          let term_list = [];
+          let termlist_ = [];
           terms.forEach( (t) => {
-            term_list.push(
+            termlist_.push(
               updateTerms(null, t)
             );
           });
-          obj.props_[pr].terms = term_list;
+          obj.props_[pr].termlist_ = termlist_;
+          obj.props_[pr].terms = myTerms;
         }
+        obj.props_[pr].tags = myTags;
       }
     }
   }
@@ -254,6 +288,11 @@ function parse(obj) {
       obj.nodes_[nd].props_ = {};
       if (spec.Props) {
         for (const pr of spec.Props) {
+          if (!obj.props_[pr]) {
+            console.log('No property defintion present for "%s" of node "%s"',
+                         pr, nd);
+            obj.props_[pr] = { handle:pr, _kind: 'Property' };
+          }
           obj.nodes_[nd].props_[pr] = obj.props_[pr];
         }
       }
@@ -266,15 +305,16 @@ function parse(obj) {
         }
       }
       if (spec.Term) {
-        let term_list = [];
+        let termlist_ = [];
         spec.Term.forEach( (t) => {
-          term_list.push(
+          termlist_.push(
             updateTerms(null, t)
           );
         });
-        obj.nodes[nd].terms = term_list;
+        obj.nodes_[nd].termlist_ = termlist_;
+        obj.nodes_[nd].terms = myTerms;
       }
-
+      obj.nodes_[nd].tags = myTags;
     }
   }
   if (!obj.edges_) {
@@ -293,6 +333,11 @@ function parse(obj) {
            tags};
         obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].props_ = {};
         if (obj.mdf.Relationships[edge_nm].Props) {
+          if (!obj.props_[pr]) {
+            console.log('No property defintion present for "%s" of edge type "%s"',
+                         pr, edge_nm);
+            obj.props_[pr] = { handle:pr, _kind: 'Property' };
+          }
           for (const pr in obj.mdf.Relationships[edge_nm].Props) {
             obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].props_[pr] =
               obj.props_[pr];
@@ -304,6 +349,7 @@ function parse(obj) {
             updateTags(key, tags[key], obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]]);
           }
         }
+        obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].tags = myTags;
       }
       if (spec.Tags) {
         obj.edges_[edge_nm]["tags"] = spec.Tags;
@@ -312,18 +358,18 @@ function parse(obj) {
         }
       }
       if (spec.Term) {
-        let term_list = [];
+        let termlist_ = [];
         spec.Term.forEach( (t) => {
-          term_list.push(
+          termlist_.push(
             updateTerms(null, t)
           );
         });
-        obj.edges_[edge_nm].terms = term_list;
+        obj.edges_[edge_nm].termlist_ = termlist_;
+        obj.edges_[edge_nm].terms = myTerms;
       }
+      obj.edges_[edge_nm].tags = myTags;
     }
   }
 }
-
-//exports.MDFReader = MDFReader;
 
 export { MDFReader };
