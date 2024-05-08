@@ -1,4 +1,5 @@
 import yaml from 'js-yaml';
+import { createMerger } from 'smob';
 
 export class MDFReader {
   constructor(...sources) {
@@ -130,7 +131,7 @@ export class MDFReader {
 }
 
 function readSources(obj, ...sources) {
-  let gets = [];
+  let merger = createMerger({arrayDistinct:true});
   for (const source of sources) {
     if (source.constructor.name === "String") {
       let mdf = yaml.load(source);
@@ -143,9 +144,7 @@ function readSources(obj, ...sources) {
       throw new Error("string or plain object required");
     }
   }
-  for (const y of obj.sources) {
-    obj.mdf = {...obj.mdf, ...y};
-  }
+  obj.mdf = merger(...obj.sources);
   parse(obj);
 }
 

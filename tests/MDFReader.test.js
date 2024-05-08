@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const icdc_yamls = [
   "./icdc-model.yml",
   "./icdc-model-props.yml",
+  "./icdc-manifest-props.yml",
 ];
 
 const icdc_data = icdc_yamls.map( (fn) => {
@@ -21,6 +22,12 @@ it('is imported', () => {
 });
 
 let mdf = new MDFReader(...icdc_data);
+
+it('merge works correctly', () => {
+  expect(mdf.mdf.Nodes.file.Export).toBeTruthy();
+  expect(mdf.mdf.Nodes.file.Export).toContain('drs_uri');
+  expect(mdf.mdf.Nodes.lab_exam.Export).toBeFalsy();
+});
 
 it('check PVs', () => {
   expect(mdf.nodes('demographic').props('breed').valueSet())
