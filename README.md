@@ -1,6 +1,6 @@
 # mdf-reader
 
-MDF Reader is a small JavaScript class that will parse a set of [model description files](https://github.com/CBIIT/bento-mdf#bento-graph-model-description-format)(MDF) to provide a set of convenient methods to iterate and navigate the described graph.
+MDFReader is a small JavaScript class that will parse a set of [model description files](https://github.com/CBIIT/bento-mdf#model-description-files-mdf) (MDF) to provide a set of convenient methods to iterate and navigate the described graph.
 
 ## Installation
 
