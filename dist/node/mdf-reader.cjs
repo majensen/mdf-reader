@@ -291,9 +291,9 @@ function parse(obj) {
       if (spec.Props) {
         for (const pr of spec.Props) {
           if (!obj.props_[pr]) {
-            console.log('No property defintion present for "%s" of node "%s"',
+            console.log('No property definition present for "%s" of node "%s"',
                          pr, nd);
-            obj.props_[pr] = { handle:pr, _kind: 'Property' };
+            obj.props_[pr] = { handle:pr, _kind: 'Property', tags:myTags };
           }
           obj.nodes_[nd].props_[pr] = obj.props_[pr];
         }
@@ -338,7 +338,7 @@ function parse(obj) {
           if (!obj.props_[pr]) {
             console.log('No property defintion present for "%s" of edge type "%s"',
                          pr, edge_nm);
-            obj.props_[pr] = { handle:pr, _kind: 'Property' };
+            obj.props_[pr] = { handle:pr, _kind: 'Property', tags:myTags };
           }
           for (const pr in obj.mdf.Relationships[edge_nm].Props) {
             obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].props_[pr] =
