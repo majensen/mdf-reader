@@ -5,7 +5,7 @@ MDFReader is a small JavaScript class that will parse a set of [model descriptio
 It complies with the MDF [merge/"overlay" spec](https://github.com/CBIIT/bento-mdf#multiple-input-yaml-files-and-overlays), and processes an arbitrary number of input YAML/JSON formatted strings:
 
 ```js
-    let mdf = MDFReader( model_yaml, model_props_yaml, model_terms_yaml, ... );
+let mdf = MDFReader( model_yaml, model_props_yaml, model_terms_yaml, ... );
 ```
 
 To avoid commmiting to a file access method in the module, you are on your own for acquiring those strings. See _Usage_ below for synchronous and async examples.
@@ -25,72 +25,72 @@ $ npm install mdf-reader
 ## Usage
 
 ```js
-    const model = new MDFReader(yaml_string1, yaml_string2, ...);
+const model = new MDFReader(yaml_string1, yaml_string2, ...);
 ```
 
 Synchronous example:
 
 ```js
-    const { MDFReader } = require('mdf-reader');
-    const fs = require('node:fs');
-    
-    const yamls = [
-      "./icdc-model.yml",
-      "./icdc-model-props.yml",
-    ];
-    
-    const data = yamls.map( (fn) => {
-      try {
-        let dta = fs.readFileSync(fn);
-        return dta.toString();
-      } catch (err) {
-        throw new Error(err);
-      }
-    });
-    
-    const model = new MDFReader(...data);
-    model.terms().forEach( (t) => {
-        console.log("Value: %s\n  Definition: %s",
-                    t.value, t.definition);
-    });
+const { MDFReader } = require('mdf-reader');
+const fs = require('node:fs');
+
+const yamls = [
+  "./icdc-model.yml",
+  "./icdc-model-props.yml",
+];
+
+const data = yamls.map( (fn) => {
+  try {
+    let dta = fs.readFileSync(fn);
+    return dta.toString();
+  } catch (err) {
+    throw new Error(err);
+  }
+});
+
+const model = new MDFReader(...data);
+model.terms().forEach( (t) => {
+    console.log("Value: %s\n  Definition: %s",
+                t.value, t.definition);
+});
 ```
 
 Async example:
 
 ```js
-    import axios from 'axios';
-    import { MDFReader } from 'mdf-reader';
-    
-    var model;
-    const yaml_urls = [
-      "https://github.com/CBIIT/ccdi-model/raw/main/model-desc/ccdi-model.yml",
-      "https://github.com/CBIIT/ccdi-model/raw/main/model-desc/ccdi-model-props.yml",
-      "https://github.com/CBIIT/ccdi-model/raw/main/model-desc/terms.yaml",
-    ];
+import axios from 'axios';
+import { MDFReader } from 'mdf-reader';
 
-    let ps = yaml_urls.map( (url) => {
-      return axios.get(url)
-        .then( (r) => { return r.data; } );
-    });
-    
-    let p = Promise.all(ps)
-        .then( (results) => {
-          let dta = [];
-          results.forEach( (result) => {
-            dta.push(result);
-          });
-          return dta;
-        })
-        .then( (dta) =>
-          { model = new MDFReader(...dta); }
-        )
-        .catch( (e) => { throw new Error(e); } );
-    
-    p.then( () => {
-        model.nodes().forEach( (n) => {
-            console.log("Node name: %s", n.handle);
-            });
+var model;
+const yaml_urls = [
+  "https://github.com/CBIIT/ccdi-model/raw/main/model-desc/ccdi-model.yml",
+  "https://github.com/CBIIT/ccdi-model/raw/main/model-desc/ccdi-model-props.yml",
+  "https://github.com/CBIIT/ccdi-model/raw/main/model-desc/terms.yaml",
+];
+
+let ps = yaml_urls.map( (url) => {
+  return axios.get(url)
+    .then( (r) => { return r.data; } );
+});
+
+let p = Promise.all(ps)
+    .then( (results) => {
+      let dta = [];
+      results.forEach( (result) => {
+        dta.push(result);
+      });
+      return dta;
+    })
+    .then( (dta) =>
+      { model = new MDFReader(...dta); }
+    )
+    .catch( (e) => { throw new Error(e); } );
+
+p.then( () => {
+    model.nodes().forEach( (n) => {
+        console.log("Node name: %s", n.handle);
         });
+    });
 ```
     
 ## Objects
@@ -98,12 +98,12 @@ Async example:
 Nodes, properties, edges, and terms are represented by plain JS Objects. Each Object has a set of standard keys which correspond to similar keys in MDF for each entity:
 
 ```js
-    { _kind = 'Node', handle                    } = node;
-    { _kind = 'Edge', handle, src, dst          } = edge;
-    { _kind = 'Property', handle, type, is_key, 
-      is_nullable, is_deprecated, is_strict     } = prop;
-    { _kind = 'Term', handle, origin_name,
-      origin_version, definition                } = term;
+{ _kind = 'Node', handle                    } = node;
+{ _kind = 'Edge', handle, src, dst          } = edge;
+{ _kind = 'Property', handle, type, is_key, 
+  is_nullable, is_deprecated, is_strict     } = prop;
+{ _kind = 'Term', handle, origin_name,
+  origin_version, definition                } = term;
 ```
 
 In general, such Objects are returned by the API calls described below.
@@ -174,7 +174,7 @@ Return an Array of acceptable values if a property has an acceptable value list 
 the following would hold:
 
 ```js
-    model.props('breed').valueSet() == ['Beagle', 'German Shepherd']
+model.props('breed').valueSet() == ['Beagle', 'German Shepherd']
 ```
 
 * `item.tags()`
@@ -190,24 +190,23 @@ Add custom parsing routines to the end of standard parsing. The function should 
 Example: Suppose your MDF has a non-standard Node key "Export", with an array of property handles as values. Standard parsing will not expose `Node[node_handle]['Export']` in MDFReader, but you can add a parsing hook as follows:
 
 ```js
-     MDFReader.add_parse_hook(
-       function() {
-         Object.keys(this.nodes_).
-           forEach( (handle) => {
-             this.nodes_[handle].exports = () => {
-               return this.mdf.Nodes[handle].Export ?
-                 this.mdf.Nodes[handle].Export : [];
-           };
-         });
-       }
-    );
+ MDFReader.add_parse_hook(
+   function() {
+     Object.keys(this.nodes_).
+       forEach( (handle) => {
+         this.nodes_[handle].exports = () => {
+           return this.mdf.Nodes[handle].Export ?
+             this.mdf.Nodes[handle].Export : [];
+       };
+     });
+   }
+);
 ```
 
 Now, after parsing,  node objects will have an own method `exports()` returning the custom array.
 
 ```js
-   
-    let mdf = MDFReader( yaml_standard, yaml_custom_export_key );
-    mdf.node('study').exports()
-      .forEach( (exported_prop) => { useProp(exported_prop); } );
+let mdf = MDFReader( yaml_standard, yaml_custom_export_key );
+mdf.node('study').exports()
+  .forEach( (exported_prop) => { useProp(exported_prop); } );
 ```
