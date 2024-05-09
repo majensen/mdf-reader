@@ -200,13 +200,14 @@ MDFReader.add_parse_hook(
             this.mdf.Nodes[handle].Export : [];
         };
       });
+    return this;
   });
 ```
 
 Now, after parsing,  node objects will have an own method `exports()` returning the custom array.
 
 ```js
-let mdf = new MDFReader( yaml_standard, yaml_custom_export_key );
+let mdf = new MDFReader( yaml_mdf_standard, yaml_mdf_custom );
 mdf.node('study').exports()
   .forEach( (exported_prop) => { useProp(exported_prop); } );
 ```
