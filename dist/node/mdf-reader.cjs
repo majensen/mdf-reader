@@ -3,6 +3,37 @@
 var yaml = require('js-yaml');
 var smob = require('smob');
 
+function myProps(...nm) {
+  if (nm.length > 0) {
+    let ret = Object.entries(this.props_)
+        .filter( (kv) => nm.includes(kv[0]) )
+        .map((kv) => { return kv[1]; });
+    return (ret.length === 1 ? ret[0] : ret);
+  }
+  else {
+    return Object.values(this.props_);
+  }
+}
+
+function myTags() {
+  return this.taglist_ ? this.taglist_ : [];
+}
+
+function myValueSet(rdr) {
+  if (this.pvs) {
+    return this.pvs.map( (h) => rdr.terms_[h].value );
+  }
+  else { return []; }
+}
+
+function myTerms(rdr) {
+  if (this.termlist_) {
+    return this.termlist_
+      .map( (t) => rdr.terms_[t] );
+  }
+  else { return []; }
+}  
+
 class MDFReader {
   constructor(...sources) {
     this.mdf = {};
@@ -13,9 +44,15 @@ class MDFReader {
     this.terms_ = null;
     this.tags_ = {};
     this.sources = [];
-    readSources(this, ...sources);
+    this.#readSources(...sources);
+    let {Handle, Version} = this.mdf;
+    this.handle = Handle;
+    this.version = Version;
+    this.#parse_terms().
+      #parse_props().
+      #parse_nodes().
+      #parse_edges();
   }
-
   nodes(...hdl) {
     if (hdl.length > 0) {
       let ret = Object.entries(this.nodes_)
@@ -130,75 +167,25 @@ class MDFReader {
       });
     return ret;
   }
-}
 
-function readSources(obj, ...sources) {
-  let merger = smob.createMerger({arrayDistinct:true});
-  for (const source of sources) {
-    if (source.constructor.name === "String") {
-      let mdf = yaml.load(source);
-      obj.sources.push( mdf );
+  #readSources(...sources) {
+    let merger = smob.createMerger({arrayDistinct:true});
+    for (const source of sources) {
+      if (source.constructor.name === "String") {
+        let mdf = yaml.load(source);
+        this.sources.push( mdf );
+      }
+      else if (typeof(source) === "object") {
+        this.sources.push(source);
+      }
+      else {
+        throw new Error("string or plain object required");
+      }
     }
-    else if (typeof(source) === "object") {
-      obj.sources.push(source);
-    }
-    else {
-      throw new Error("string or plain object required");
-    }
-  }
-  obj.mdf = merger(...obj.sources);
-  parse(obj);
-}
+    this.mdf = merger(...this.sources);
+ }
 
-function parse(obj) {
-
-  function myProps(...nm) {
-    if (nm.length > 0) {
-      let ret = Object.entries(this.props_)
-          .filter( (kv) => nm.includes(kv[0]) )
-          .map((kv) => { return kv[1]; });
-      return (ret.length === 1 ? ret[0] : ret);
-    }
-    else {
-      return Object.values(this.props_);
-    }
-  }
-
-  function myTags() {
-    return this.taglist_ ? this.taglist_ : [];
-  }
-
-  function myValueSet() {
-    if (this.pvs) {
-      return this.pvs.map( (h) => obj.terms_[h].value )
-    }
-    else { return []; }
-  }
-  
-  function myTerms() {
-    if (this.termlist_) {
-      return this.termlist_
-        .map( (t) => obj.terms_[t] );
-    }
-    else { return []; }
-  }
-
-  const updateTags = (key, value, item) => {
-    if (!obj.tags_[key]) {
-      obj.tags_[key] = {};
-    }
-    if (!obj.tags_[key][value]) {
-      obj.tags_[key][value] = [];
-    }
-    obj.tags_[key][value].push(item);
-    if (!item.taglist_) {
-      item.taglist_ = [];
-      item.tags = myTags;
-    }
-    item.taglist_.push([key, value]);
-  };
-  
-  const updateTerms = (handle, spec) => {
+  updateTerms(handle, spec) {
     let {Value:value, Origin:origin_name,
          Desc:desc, Code:origin_id,
          Version:origin_version, Definition:definition,
@@ -211,7 +198,7 @@ function parse(obj) {
         handle = exp_handle;
       }
     }
-    obj.terms_[handle] = {
+    this.terms_[handle] = {
       _kind: "Term",
       handle,
       value,
@@ -222,156 +209,185 @@ function parse(obj) {
     };
     return handle;
   };
-  
-  if (!obj.handle) {
-    let {Handle, Version} = obj.mdf;
-    obj.handle = Handle;
-    obj.version = Version;
-  }
-  if (!obj.terms_) {
-    // Handle, Value, Origin, Code, Definition, Version
-    obj.terms_ = {};
-    for (const tm in obj.mdf.Terms) {
-      updateTerms(tm, obj.mdf.Terms[tm]);
+
+  updateTags(key, value, item){
+    if (!this.tags_[key]) {
+      this.tags_[key] = {};
     }
+    if (!this.tags_[key][value]) {
+      this.tags_[key][value] = [];
+    }
+    this.tags_[key][value].push(item);
+    if (!item.taglist_) {
+      item.taglist_ = [];
+      item.tags = myTags.bind(item);
+    }
+    item.taglist_.push([key, value]);
+  };
+
+  #parse_terms() {
+    if (!this.terms_) {
+      // Handle, Value, Origin, Code, Definition, Version
+      this.terms_ = {};
+      for (const tm in this.mdf.Terms) {
+        this.updateTerms(tm, this.mdf.Terms[tm]);
+      }
+    }
+    return this;
   }
-  if (!obj.props_) {
-    obj.props_ = {};
-    if (obj.mdf.PropDefinitions) {
-      for (const pr in obj.mdf.PropDefinitions) {
-        let handle = pr;
-        let { Type: type, Enum:pvs, Req: is_required,
-              Desc: desc, Key: is_key, Nul: is_nullable,
-              Deprecated: is_deprecated, Strict: is_strict,
-              Tags: tags, Term: terms, 
-            } = obj.mdf.PropDefinitions[pr];
-        let spec = { handle, desc, type,
-                     is_required, is_key, is_nullable,
-                     is_deprecated, is_strict,
-                     tags, _kind:"Property",
-                   };
-        obj.props_[pr] = spec;
-        if (pvs) {
-          if (!type) { type = "value_set"; }
-          obj.props_[pr]["pvs"] = pvs;
-          pvs.forEach( (v) => {
-            if (!obj.terms_[v]) {
-              //              obj.terms_[v] = { handle:v, value:v, _kind:"Term" };
-              updateTerms(null, {Value:v, Origin:"<Local>"});
+
+  #parse_props() {
+    if (!this.props_) {
+      this.props_ = {};
+      if (this.mdf.PropDefinitions) {
+        for (const pr in this.mdf.PropDefinitions) {
+          let handle = pr;
+          let { Type: type, Enum:pvs, Req: is_required,
+                Desc: desc, Key: is_key, Nul: is_nullable,
+                Deprecated: is_deprecated, Strict: is_strict,
+                Tags: tags, Term: terms, 
+              } = this.mdf.PropDefinitions[pr];
+          let spec = { handle, desc, type,
+                       is_required, is_key, is_nullable,
+                       is_deprecated, is_strict,
+                       tags, _kind:"Property",
+                     };
+          this.props_[pr] = spec;
+          if (pvs) {
+            if (!type) { type = "value_set"; }
+            this.props_[pr]["pvs"] = pvs;
+            pvs.forEach( (v) => {
+              if (!this.terms_[v]) {
+                //              this.terms_[v] = { handle:v, value:v, _kind:"Term" };
+                this.updateTerms(null, {Value:v, Origin:"<Local>"});
+              }
+            });
+            // this.props_[pr].terms_ = this.terms_; // kludge
+            this.props_[pr].valueSet = myValueSet.bind(this.props_[pr], this);
+          }
+          if (tags) {
+            for (const key in tags) {
+              this.updateTags(key, tags[key], this.props_[pr]);
             }
-          });
-          // obj.props_[pr].terms_ = obj.terms_; // kludge
-          obj.props_[pr].valueSet = myValueSet;
+          }
+          if (terms) {
+            let termlist_ = [];
+            terms.forEach( (t) => {
+              termlist_.push(
+                this.updateTerms(null, t)
+              );
+            });
+            this.props_[pr].termlist_ = termlist_;
+            this.props_[pr].terms = myTerms.bind(this.props_[pr], this);
+          }
+          this.props_[pr].tags = myTags.bind(this.props_[pr]);
         }
-        if (tags) {
-          for (const key in tags) {
-            updateTags(key, tags[key], obj.props_[pr]);
+      }
+    }
+    return this;
+  }
+
+  #parse_nodes() {
+    if (!this.nodes_) {
+      this.nodes_ = {};
+      for (const nd in this.mdf.Nodes) {
+        let spec = this.mdf.Nodes[nd];
+        this.nodes_[nd] = {_kind:"Node", handle:nd};
+        this.nodes_[nd].props_ = {};
+        if (spec.Props) {
+          for (const pr of spec.Props) {
+            if (!this.props_[pr]) {
+              console.log('No property definition present for "%s" of node "%s"',
+                          pr, nd);
+              this.props_[pr] = { handle:pr, _kind: 'Property'};
+              this.props_[pr].tags = myTags.bind(this.props[pr]);
+            }
+            this.nodes_[nd].props_[pr] = this.props_[pr];
           }
         }
-        if (terms) {
+        this.nodes_[nd].props = myProps.bind(this.nodes_[nd]);
+
+        if (spec.Tags) {
+          this.nodes_[nd]["tags"] = spec.Tags;
+          for (const key in spec.Tags) {
+            this.updateTags(key, spec.Tags[key], this.nodes_[nd]);
+          }
+        }
+        if (spec.Term) {
           let termlist_ = [];
-          terms.forEach( (t) => {
+          spec.Term.forEach( (t) => {
+            termlist_.push(
+              this.updateTerms(null, t)
+            );
+          });
+          this.nodes_[nd].termlist_ = termlist_;
+          this.nodes_[nd].terms = myTerms(this.nodes_[nd]);
+        }
+        this.nodes_[nd].tags = myTags.bind(this.nodes_[nd]);
+      }
+    }
+    return this;
+  }
+
+  #parse_edges() {
+    if (!this.edges_) {
+      this.edges_ = {};
+      for (const edge_nm in this.mdf.Relationships) {
+        let spec = this.mdf.Relationships[edge_nm];
+        let mul_def = spec.Mul;
+        this.edges_[edge_nm] = {_kind:"EdgeType", handle:edge_nm};
+        for (const end_pair of spec.Ends) {
+          let {Mul, Tags:tags} = end_pair;
+          this.edges_[edge_nm][end_pair["Src"]] = {};
+          this.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]] =
+            {multiplicity: (Mul ? Mul : mul_def), _kind:"Edge",
+             handle:`${edge_nm}:${end_pair.Src}:${end_pair.Dst}`,
+             src: end_pair.Src, dst: end_pair.Dst,
+             tags};
+          this.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].props_ = {};
+          if (this.mdf.Relationships[edge_nm].Props) {
+            for (const pr in this.mdf.Relationships[edge_nm].Props) {
+              if (!this.props_[pr]) {
+                console.log('No property defintion present for "%s" of edge type "%s"',
+                            pr, edge_nm);
+                this.props_[pr] = { handle:pr, _kind: 'Property'};
+                this.props_[pr].tags = myTags.bind(this.props_[pr]);
+              }
+              this.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].props_[pr] =
+                this.props_[pr];
+            }
+          }
+          this.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].props =
+            myProps.bind(this.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]]);
+          if (tags) {
+            for (const key in tags) {
+              updateTags(key, tags[key], this.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]]);
+            }
+          }
+          this.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].tags =
+            myTags.bind(this.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]]);
+        }
+        if (spec.Tags) {
+          this.edges_[edge_nm]["tags"] = spec.Tags;
+          for (const key in this.edges_[edge_nm]["tags"]) {
+            updateTags(key, this.edges_[edge_nm]["tags"][key], this.edges_[edge_nm]);
+          }
+        }
+        if (spec.Term) {
+          let termlist_ = [];
+          spec.Term.forEach( (t) => {
             termlist_.push(
               updateTerms(null, t)
             );
           });
-          obj.props_[pr].termlist_ = termlist_;
-          obj.props_[pr].terms = myTerms;
+          this.edges_[edge_nm].termlist_ = termlist_;
+          this.edges_[edge_nm].terms = myTerms(this.edges_[edge_nm]);
         }
-        obj.props_[pr].tags = myTags;
+        this.edges_[edge_nm].tags = myTags.bind(this.edges_[edge_nm]);
       }
     }
   }
-  if (!obj.nodes_) {
-    obj.nodes_ = {};
-    for (const nd in obj.mdf.Nodes) {
-      let spec = obj.mdf.Nodes[nd];
-      obj.nodes_[nd] = {_kind:"Node", handle:nd};
-      obj.nodes_[nd].props_ = {};
-      if (spec.Props) {
-        for (const pr of spec.Props) {
-          if (!obj.props_[pr]) {
-            console.log('No property definition present for "%s" of node "%s"',
-                         pr, nd);
-            obj.props_[pr] = { handle:pr, _kind: 'Property', tags:myTags };
-          }
-          obj.nodes_[nd].props_[pr] = obj.props_[pr];
-        }
-      }
-      obj.nodes_[nd].props = myProps;
 
-      if (spec.Tags) {
-        obj.nodes_[nd]["tags"] = spec.Tags;
-        for (const key in spec.Tags) {
-          updateTags(key, spec.Tags[key], obj.nodes_[nd]);
-        }
-      }
-      if (spec.Term) {
-        let termlist_ = [];
-        spec.Term.forEach( (t) => {
-          termlist_.push(
-            updateTerms(null, t)
-          );
-        });
-        obj.nodes_[nd].termlist_ = termlist_;
-        obj.nodes_[nd].terms = myTerms;
-      }
-      obj.nodes_[nd].tags = myTags;
-    }
-  }
-  if (!obj.edges_) {
-    obj.edges_ = {};
-    for (const edge_nm in obj.mdf.Relationships) {
-      let spec = obj.mdf.Relationships[edge_nm];
-      let mul_def = spec.Mul;
-      obj.edges_[edge_nm] = {_kind:"EdgeType", handle:edge_nm};
-      for (const end_pair of spec.Ends) {
-        let {Mul, Tags:tags} = end_pair;
-        obj.edges_[edge_nm][end_pair["Src"]] = {};
-        obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]] =
-          {multiplicity: (Mul ? Mul : mul_def), _kind:"Edge",
-           handle:`${edge_nm}:${end_pair.Src}:${end_pair.Dst}`,
-           src: end_pair.Src, dst: end_pair.Dst,
-           tags};
-        obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].props_ = {};
-        if (obj.mdf.Relationships[edge_nm].Props) {
-          if (!obj.props_[pr]) {
-            console.log('No property defintion present for "%s" of edge type "%s"',
-                         pr, edge_nm);
-            obj.props_[pr] = { handle:pr, _kind: 'Property', tags:myTags };
-          }
-          for (const pr in obj.mdf.Relationships[edge_nm].Props) {
-            obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].props_[pr] =
-              obj.props_[pr];
-          }
-        }
-        obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].props = myProps;
-        if (tags) {
-          for (const key in tags) {
-            updateTags(key, tags[key], obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]]);
-          }
-        }
-        obj.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].tags = myTags;
-      }
-      if (spec.Tags) {
-        obj.edges_[edge_nm]["tags"] = spec.Tags;
-        for (const key in obj.edges_[edge_nm]["tags"]) {
-          updateTags(key, obj.edges_[edge_nm]["tags"][key], obj.edges_[edge_nm]);
-        }
-      }
-      if (spec.Term) {
-        let termlist_ = [];
-        spec.Term.forEach( (t) => {
-          termlist_.push(
-            updateTerms(null, t)
-          );
-        });
-        obj.edges_[edge_nm].termlist_ = termlist_;
-        obj.edges_[edge_nm].terms = myTerms;
-      }
-      obj.edges_[edge_nm].tags = myTags;
-    }
-  }
 }
 
 exports.MDFReader = MDFReader;
