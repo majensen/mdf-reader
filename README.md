@@ -5,7 +5,7 @@ MDFReader is a small JavaScript class that will parse a set of [model descriptio
 It complies with the MDF [merge/"overlay" spec](https://github.com/CBIIT/bento-mdf#multiple-input-yaml-files-and-overlays), and processes an arbitrary number of input YAML/JSON formatted strings:
 
 ```js
-let mdf = MDFReader( model_yaml, model_props_yaml, model_terms_yaml, ... );
+let mdf = new MDFReader( model_yaml, model_props_yaml, model_terms_yaml, ... );
 ```
 
 To avoid commmiting to a file access method in the module, you are on your own for acquiring those strings. See _Usage_ below for synchronous and async examples.
@@ -206,7 +206,7 @@ MDFReader.add_parse_hook(
 Now, after parsing,  node objects will have an own method `exports()` returning the custom array.
 
 ```js
-let mdf = MDFReader( yaml_standard, yaml_custom_export_key );
+let mdf = new MDFReader( yaml_standard, yaml_custom_export_key );
 mdf.node('study').exports()
   .forEach( (exported_prop) => { useProp(exported_prop); } );
 ```
