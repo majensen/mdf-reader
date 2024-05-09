@@ -8,7 +8,7 @@ It complies with the MDF [merge/"overlay" spec](https://github.com/CBIIT/bento-m
 let mdf = new MDFReader( model_yaml, model_props_yaml, model_terms_yaml, ... );
 ```
 
-To avoid commmiting to a file access method in the module, you are on your own for acquiring those strings. See _Usage_ below for synchronous and async examples.
+To avoid committing to a file access method in the module, you are on your own for acquiring those strings. See _Usage_ below for synchronous and async examples.
 
 MDFReader out of the box attempts to comply with the MDF spec. To add implementation-specific info to the MDF, you're encouraged to use the built-in [Tags](https://github.com/CBIIT/bento-mdf#tagging-entities) feature of MDF. See _API_ below for tag accessors and finders.
 
@@ -82,11 +82,11 @@ let p = Promise.all(ps)
       return dta;
     })
     .then( (dta) =>
-      { model = new MDFReader(...dta); }
+      { return new MDFReader(...dta); }
     )
     .catch( (e) => { throw new Error(e); } );
 
-p.then( () => {
+p.then( (model) => {
     model.nodes().forEach( (n) => {
         console.log("Node name: %s", n.handle);
         });
