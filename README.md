@@ -112,7 +112,7 @@ In general, such Objects are returned by the API calls described below.
 
 ### MDFReader instance methods:
 
-* `nodes()`, `nodes('mynode')`, `nodes('a\_node', ...)`
+* `nodes()`, `nodes('mynode')`, `nodes('a_node', ...)`
 * `edges()`, `edges('has_a:node1:node2')`, `edges('has_a:node1:node2', 'is_a:node3:node4', ...)`
 * `props()`, `props('prop1')`, `props('a_prop', ...)`
 * `terms()`, `terms('myterm')`, `terms('a_term", ...)`
@@ -141,7 +141,8 @@ having the given key are returned.
 Example: to get all nodes that have a Category tag:
 
 ```js
- let cat_nodes = model.tag_kvs('Category').flatMap( (kv) => model.tagged_items(...kv) )
+ let cat_nodes = model.tag_kvs('Category')
+    .flatMap( (kv) => model.tagged_items(...kv) );
 ```
 
 ### Object own methods
@@ -190,17 +191,16 @@ Add custom parsing routines to the end of standard parsing. The function should 
 Example: Suppose your MDF has a non-standard Node key "Export", with an array of property handles as values. Standard parsing will not expose `Node[node_handle]['Export']` in MDFReader, but you can add a parsing hook as follows:
 
 ```js
- MDFReader.add_parse_hook(
-   function() {
-     Object.keys(this.nodes_).
-       forEach( (handle) => {
-         this.nodes_[handle].exports = () => {
-           return this.mdf.Nodes[handle].Export ?
-             this.mdf.Nodes[handle].Export : [];
-       };
-     });
-   }
-);
+MDFReader.add_parse_hook(
+  function() {
+    Object.keys(this.nodes_)
+      .forEach( (handle) => {
+        this.nodes_[handle].exports = () => {
+          return this.mdf.Nodes[handle].Export ?
+            this.mdf.Nodes[handle].Export : [];
+        };
+      });
+  });
 ```
 
 Now, after parsing,  node objects will have an own method `exports()` returning the custom array.
