@@ -2,6 +2,20 @@
 
 MDFReader is a small JavaScript class that will parse a set of [model description files](https://github.com/CBIIT/bento-mdf#model-description-files-mdf) (MDF) to provide a set of convenient methods to iterate and navigate the described graph.
 
+It complies with the MDF [merge/"overlay" spec](https://github.com/CBIIT/bento-mdf#multiple-input-yaml-files-and-overlays), and processes an arbitrary number of input YAML/JSON formatted strings:
+
+```js
+    let mdf = MDFReader( model_yaml, model_props_yaml, model_terms_yaml, ... );
+```
+
+To avoid commmiting to a file access method in the module, you are on your own for acquiring those strings. See _Usage_ below for synchronous and async examples.
+
+MDFReader out of the box attempts to comply with the MDF spec. To add implementation-specific info to the MDF, you're encouraged to use the built-in [Tags](https://github.com/CBIIT/bento-mdf#tagging-entities) feature of MDF. See _API_ below for tag accessors and finders.
+
+However, MDF is flexible and you can add custom keys without invalidating it. To parse custom keys in MDFReader, you can add parsing hooks using the static function 
+`MDFReader.add_parse_hook(<function>)`. See _API_ below for details and example.
+
+
 ## Installation
 
 ```bash
@@ -167,3 +181,33 @@ the following would hold:
 
 Return an Array of `[key, value]` pairs tagging the item (node, property, or edge).
 
+### Custom parsing
+
+* `MDFReader.add_parse_hook(function(){...})`
+
+Add custom parsing routines to the end of standard parsing. The function should be written considering `this` as the MDFReader instance under construction. Multiple calls to `add_parse_hook` add multiple hooks in order to the parse flow.
+
+Example: Suppose your MDF has a non-standard Node key "Export", with an array of property handles as values. Standard parsing will not expose `Node[node_handle]['Export']` in MDFReader, but you can add a parsing hook as follows:
+
+```js
+     MDFReader.add_parse_hook(
+       function() {
+         Object.keys(this.nodes_).
+           forEach( (handle) => {
+             this.nodes_[handle].exports = () => {
+               return this.mdf.Nodes[handle].Export ?
+                 this.mdf.Nodes[handle].Export : [];
+           };
+         });
+       }
+    );
+```
+
+Now, after parsing,  node objects will have an own method `exports()` returning the custom array.
+
+```js
+   
+    let mdf = MDFReader( yaml_standard, yaml_custom_export_key );
+    mdf.node('study').exports()
+      .forEach( (exported_prop) => { useProp(exported_prop); } );
+```

@@ -33,6 +33,12 @@ function myTerms(rdr) {
 }  
 
 class MDFReader {
+  static #parse_hooks = [];
+  static add_parse_hook(hook) {
+    this.#parse_hooks.push(hook);
+    return this;
+  }
+
   constructor(...sources) {
     this.mdf = {};
     this.handle = null;
@@ -42,14 +48,15 @@ class MDFReader {
     this.terms_ = null;
     this.tags_ = {};
     this.sources = [];
-    this.#readSources(...sources);
+    this.#readSources( ...sources);
     let {Handle, Version} = this.mdf;
     this.handle = Handle;
     this.version = Version;
     this.#parse_terms().
       #parse_props().
       #parse_nodes().
-      #parse_edges();
+      #parse_edges().
+      #run_parse_hooks(this.constructor.#parse_hooks);
   }
   nodes(...hdl) {
     if (hdl.length > 0) {
@@ -384,6 +391,17 @@ class MDFReader {
         this.edges_[edge_nm].tags = myTags.bind(this.edges_[edge_nm]);
       }
     }
+    return this;
+  }
+
+  #run_parse_hooks(hooks) {
+    if (hooks.length == 0) {
+      return this;
+    }
+    hooks.forEach( (hook) => {
+      hook.call(this);
+    });
+    return this;
   }
 
 }

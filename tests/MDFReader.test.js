@@ -21,6 +21,18 @@ it('is imported', () => {
   expect(typeof(MDFReader)).toBe('function');
 });
 
+MDFReader.add_parse_hook(
+  function() {
+    Object.keys(this.nodes_).
+      forEach( (handle) => {
+        this.nodes_[handle].exports = () => {
+          return this.mdf.Nodes[handle].Export ?
+            this.mdf.Nodes[handle].Export : [];
+        };
+      });
+  }
+);
+
 let mdf = new MDFReader(...icdc_data);
 
 it('merge works correctly', () => {
@@ -61,4 +73,13 @@ it('get outgoing and incoming edges', () => {
   expect(mdf.incoming_edges('sample').map( x => x.dst )
          .every( x => x === 'sample')).toBeTruthy();
   
+});
+
+it('added parse hook and works', () => {
+  expect(mdf.nodes('file').exports()).toStrictEqual([
+    'file_name', 'drs_uri',
+    'file_type', 'file_description',
+    'file_format', 'file_size', 'md5sum',
+    'uuid', 'file_location']);
+  expect(mdf.nodes('lab_exam').exports()).toStrictEqual([]);
 });
