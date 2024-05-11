@@ -21,13 +21,25 @@ it('is imported', () => {
   expect(typeof(MDFReader)).toBe('function');
 });
 
+// MDFReader.add_parse_hook(
+//   function() {
+//     Object.keys(this.nodes_).
+//       forEach( (handle) => {
+//         this.nodes_[handle].exports = () => {
+//           return this.mdf.Nodes[handle].Export ?
+//             this.mdf.Nodes[handle].Export : [];
+//         };
+//       });
+//   }
+// );
+
 MDFReader.add_parse_hook(
   function() {
-    Object.keys(this.nodes_).
-      forEach( (handle) => {
-        this.nodes_[handle].exports = () => {
-          return this.mdf.Nodes[handle].Export ?
-            this.mdf.Nodes[handle].Export : [];
+    this.nodes().
+      forEach( (node) => {
+        node.exports = () => {
+          return this.mdf.Nodes[node.handle].Export ?
+            this.mdf.Nodes[node.handle].Export : [];
         };
       });
   }
