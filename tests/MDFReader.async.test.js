@@ -61,9 +61,23 @@ it('knows its entities', () => {
     expect(mdf.nodes().map( x => x._kind ).every( k => k === "Node" )).toBeTruthy();
     expect(mdf.props().map( x => x._kind ).every( k => k === "Property" )).toBeTruthy();
     expect(mdf.terms().map( x => x._kind ).every( k => k === "Term" )).toBeTruthy();
-    expect(mdf.edges().map( x => x._kind ).every( k => k === "EdgeType" )).toBeTruthy();
+    expect(mdf.edges().map( x => x._kind ).every( k => k === "Edge" )).toBeTruthy();
   });
 });
+
+it('can filter edges by source and type', () => {
+  return p.then( () => {
+    expect(mdf.edges().filter( edge => edge.dst === 'sample').length)
+      .toBe(mdf.incoming_edges('sample').length);
+    expect(mdf.edges().filter( edge => edge.dst === 'sample' && edge.type === 'of_pdx')
+          .length)
+      .toBe(mdf.edges('of_pdx').filter( edge => edge.dst === 'sample').length);
+    expect(mdf.edges('of_pdx').filter( edge => edge.dst === 'sample').length).
+      toBe(mdf.incoming_edges('sample').filter( edge => edge.type === 'of_pdx')
+           .length);
+  });
+});
+                 
 
 it('understands annotation Terms',  () => {
   return p.then( () => {

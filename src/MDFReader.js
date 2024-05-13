@@ -13,7 +13,10 @@ function myProps(...nm) {
   }
 }
 
-function myTags() {
+function myTags(key) {
+  if (key) {
+    return (Object.fromEntries(this.taglist_))[key];
+  }
   return this.taglist_ ? this.taglist_ : [];
 }
 
@@ -61,8 +64,8 @@ export class MDFReader {
   nodes(...hdl) {
     if (hdl.length > 0) {
       let ret = Object.entries(this.nodes_)
-        .filter( (kv) => hdl.includes(kv[0]) )
-          .map((kv) => { return kv[1]; });
+          .filter( ([h, node]) => hdl.includes(h) )
+          .map( ([h, node]) => node );
       return (ret.length === 1 ? ret[0] : ret);
     }
     else {
@@ -72,17 +75,23 @@ export class MDFReader {
     }
   }
 
-  edges(...hdl) {
-    if (hdl.length > 0) {
+  edges(...edge_types) {
+    if (edge_types.length > 0) {
       let ret = Object.entries(this.edges_)
-        .filter( (kv) => hdl.includes(kv[0]) )
-          .map((kv) => { return kv[1]; });
-      return (ret.length === 1 ? ret[0] : ret);
+          .filter( ([h, edges]) => edge_types.includes(h) )
+          .flatMap(([h, edges]) => {
+            return Object.values(edges.insts)
+              .flatMap((dests) => Object.values(dests));
+          });
+      return ret;
     }
     else {
       return Object.keys(this.edges_)
         .sort()
-        .map( (e) => this.edges_[e] );
+        .flatMap( (edge_type) => {
+          return Object.values(this.edges_[edge_type].insts)
+            .flatMap((dests) => Object.values(dests));
+        });
     }
   }
 
@@ -147,11 +156,11 @@ export class MDFReader {
   outgoing_edges(node_hdl) {
     let ret = [];
     Object.entries(this.edges_)
-      .filter( (kvt) => kvt[1][node_hdl] )
-      .forEach( (kvt) => {
-        Object.values(kvt[1][node_hdl])
-          .forEach( (kvd) => {
-            ret.push(kvd);
+      .filter( ([type, edges]) => edges.insts[node_hdl] )
+      .forEach( ([type, edges]) => {
+        Object.values(edges.insts[node_hdl])
+          .forEach( (edge) => {
+            ret.push(edge);
           });
       });
     return ret;
@@ -160,14 +169,11 @@ export class MDFReader {
   incoming_edges(node_hdl) {
     let ret = [];
     Object.entries(this.edges_)
-      .forEach( (kvt) => {
-        Object.entries(kvt[1])
-          .forEach( (kvs) => {
-            Object.entries(kvs[1])
-              .filter( (kvd) => kvd[0] == node_hdl )
-              .forEach( (kvd) => {
-                ret.push(kvd[1]);
-              });
+      .forEach( ([type, edges]) => {
+        Object.entries(edges.insts)
+          .forEach( ([src, by_dst]) => {
+            by_dst[node_hdl]
+              && ret.push(by_dst[node_hdl]);
           });
       });
     return ret;
@@ -297,7 +303,7 @@ export class MDFReader {
       this.nodes_ = {};
       for (const nd in this.mdf.Nodes) {
         let spec = this.mdf.Nodes[nd];
-        this.nodes_[nd] = {_kind:"Node", handle:nd};
+        this.nodes_[nd] = {_kind:"Node", handle:nd, desc:spec.desc};
         this.nodes_[nd].props_ = {};
         if (spec.Props) {
           for (const pr of spec.Props) {
@@ -340,16 +346,19 @@ export class MDFReader {
       for (const edge_nm in this.mdf.Relationships) {
         let spec = this.mdf.Relationships[edge_nm];
         let mul_def = spec.Mul;
-        this.edges_[edge_nm] = {_kind:"EdgeType", handle:edge_nm};
+        this.edges_[edge_nm] = {_kind:"EdgeType", handle:edge_nm, desc:spec.desc };
+        let insts = {};
         for (const end_pair of spec.Ends) {
           let {Mul, Tags:tags} = end_pair;
-          this.edges_[edge_nm][end_pair["Src"]] = {};
-          this.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]] =
+          if (!insts[end_pair["Src"]]) {
+            insts[end_pair["Src"]] = {};
+          }
+          insts[end_pair["Src"]][end_pair["Dst"]] =
             {multiplicity: (Mul ? Mul : mul_def), _kind:"Edge",
              handle:`${edge_nm}:${end_pair.Src}:${end_pair.Dst}`,
-             src: end_pair.Src, dst: end_pair.Dst,
+             src: end_pair.Src, dst: end_pair.Dst, type: edge_nm,
              tags};
-          this.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].props_ = {};
+          insts[end_pair["Src"]][end_pair["Dst"]].props_ = {};
           if (this.mdf.Relationships[edge_nm].Props) {
             for (const pr in this.mdf.Relationships[edge_nm].Props) {
               if (!this.props_[pr]) {
@@ -358,20 +367,21 @@ export class MDFReader {
                 this.props_[pr] = { handle:pr, _kind: 'Property'};
                 this.props_[pr].tags = myTags.bind(this.props_[pr]);
               }
-              this.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].props_[pr] =
+              insts[end_pair["Src"]][end_pair["Dst"]].props_[pr] =
                 this.props_[pr];
             }
           }
-          this.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].props =
-            myProps.bind(this.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]]);
+          insts[end_pair["Src"]][end_pair["Dst"]].props =
+            myProps.bind(insts[end_pair["Src"]][end_pair["Dst"]]);
           if (tags) {
             for (const key in tags) {
-              updateTags(key, tags[key], this.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]]);
+              updateTags(key, tags[key], insts[end_pair["Src"]][end_pair["Dst"]]);
             }
           }
-          this.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]].tags =
-            myTags.bind(this.edges_[edge_nm][end_pair["Src"]][end_pair["Dst"]]);
+          insts[end_pair["Src"]][end_pair["Dst"]].tags =
+            myTags.bind(insts[end_pair["Src"]][end_pair["Dst"]]);
         }
+        this.edges_[edge_nm].insts = insts;
         if (spec.Tags) {
           this.edges_[edge_nm]["tags"] = spec.Tags;
           for (const key in this.edges_[edge_nm]["tags"]) {

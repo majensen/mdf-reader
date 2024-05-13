@@ -67,7 +67,6 @@ it('get tag key-value pairs for one key', () => {
          .every(x => x === 'Assignment'))
     .toBeTruthy();
 });
-  
 
 it('get some tagged items', () => {
   expect(mdf.tagged_items('Category','study').length).toBeGreaterThan(3);
@@ -77,6 +76,7 @@ it('get some tagged items', () => {
 
 it('own tags() works', () => {
   expect(mdf.nodes('program').tags().length).toBe(4);
+  expect(mdf.nodes('program').tags('Category')).toBe('administrative');
 });
 
 it('get outgoing and incoming edges', () => {

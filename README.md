@@ -98,12 +98,13 @@ p.then( (model) => {
 Nodes, properties, edges, and terms are represented by plain JS Objects. Each Object has a set of standard keys which correspond to similar keys in MDF for each entity:
 
 ```js
-{ _kind = 'Node', handle                    } = node;
-{ _kind = 'Edge', handle, src, dst          } = edge;
-{ _kind = 'Property', handle, type, is_key, 
-  is_nullable, is_deprecated, is_strict     } = prop;
-{ _kind = 'Term', handle, origin_name,
-  origin_version, definition                } = term;
+{ _kind = 'Node', handle, desc              } = node;
+{ _kind = 'Edge', handle, src, dst, type    } = edge;
+{ _kind = 'Property', handle, type, desc, 
+  is_key, is_nullable, is_deprecated, 
+  is_strict                                 } = prop;
+{ _kind = 'Term', handle, desc,
+  origin_name, origin_version, definition   } = term;
 ```
 
 In general, such Objects are returned by the API calls described below.
@@ -113,7 +114,7 @@ In general, such Objects are returned by the API calls described below.
 ### MDFReader instance methods:
 
 * `nodes()`, `nodes('mynode')`, `nodes('a_node', ...)`
-* `edges()`, `edges('has_a:node1:node2')`, `edges('has_a:node1:node2', 'is_a:node3:node4', ...)`
+* `edges()`, `edges('has_a', ...)` (see below)
 * `props()`, `props('prop1')`, `props('a_prop', ...)`
 * `terms()`, `terms('myterm')`, `terms('a_term", ...)`
 
@@ -123,10 +124,23 @@ With one entity handle argument, return the Object or null if no such object exi
 
 With multiple handles as arguments, return an Array of the Objects corresponding to the handles.
 
+* `edges(<edge type>)`
+
+In MDF, edges have a simple string "type" (such as `member_of`), a source or "from" node, 
+and a destination or "to" node. The `edges` accessor will accept any number of edge types, 
+and return all edges having those types. 
+
 * `outgoing_edges(node_handle)`
 * `incoming_edges(node_handle)`
 
 Return an Array of edges for which the specified node is the source or destination, respectively.
+For example, to get all outgoing edges for a node "sample" (i.e., all edges where sample is
+the source nodes), with the edge type "member_of":
+
+```JS
+const sample_member_of_x = model.outgoing_edges('sample')
+                             .filter( (edge) => edge.type === 'member_of' );
+```
 
 * `tagged_items(key, value)`
 
@@ -178,9 +192,13 @@ the following would hold:
 model.props('breed').valueSet() == ['Beagle', 'German Shepherd']
 ```
 
-* `item.tags()`
+* `item.tags()`, `item.tags(<key>)`
 
-Return an Array of `[key, value]` pairs tagging the item (node, property, or edge).
+With no arguments, return an Array of `[key, value]` pairs tagging the
+item (node, property, or edge).
+
+If a `key` is provided as a single argument, the tag value on that item for that key (if any) is
+returned as a string.
 
 ### Custom parsing
 
