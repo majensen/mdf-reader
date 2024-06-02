@@ -102,10 +102,13 @@ Nodes, properties, edges, and terms are represented by plain JS Objects. Each Ob
 { _kind = 'Edge', handle, src, dst, type    } = edge;
 { _kind = 'Property', handle, type, desc, 
   is_key, is_nullable, is_deprecated, 
-  is_strict                                 } = prop;
+  is_strict, owner                          } = prop;
 { _kind = 'Term', handle, desc,
   origin_name, origin_version, definition   } = term;
 ```
+
+Property objects have an attribute `owner`, which points back to the Node or Edge object
+to which they belong.
 
 In general, such Objects are returned by the API calls described below.
 
