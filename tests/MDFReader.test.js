@@ -87,6 +87,11 @@ it('get outgoing and incoming edges', () => {
   
 });
 
+it('get a node, see that prop.owner is that node for all its props', () => {
+  const study = mdf.nodes('study');
+  expect(study.props().every( p => p.owner === study )).toBeTruthy();
+});
+
 it('added parse hook and works', () => {
   expect(mdf.nodes('file').exports()).toStrictEqual([
     'file_name', 'drs_uri',

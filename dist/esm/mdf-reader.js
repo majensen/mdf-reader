@@ -314,6 +314,7 @@ class MDFReader {
               this.props_[pr].tags = myTags.bind(this.props[pr]);
             }
             this.nodes_[nd].props_[pr] = this.props_[pr];
+            this.props_[pr].owner = this.nodes_[nd];
           }
         }
         this.nodes_[nd].props = myProps.bind(this.nodes_[nd]);
@@ -369,6 +370,7 @@ class MDFReader {
               }
               insts[end_pair["Src"]][end_pair["Dst"]].props_[pr] =
                 this.props_[pr];
+              this.props_[pr].owner = insts[end_pair["Src"]][end_pair["Dst"]];
             }
           }
           insts[end_pair["Src"]][end_pair["Dst"]].props =

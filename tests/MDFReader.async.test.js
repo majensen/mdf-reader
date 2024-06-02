@@ -4,7 +4,7 @@ let { MDFReader } = require('../dist/node/mdf-reader');
 const ccdi_yamls_urls = [
   "https://github.com/CBIIT/ccdi-model/raw/main/model-desc/ccdi-model.yml",
   "https://github.com/CBIIT/ccdi-model/raw/main/model-desc/ccdi-model-props.yml",
-  "https://github.com/CBIIT/ccdi-model/raw/main/model-desc/terms.yaml",  
+  "https://github.com/CBIIT/ccdi-model/raw/main/model-desc/terms.yml",  
 ];
 
 var mdf;
