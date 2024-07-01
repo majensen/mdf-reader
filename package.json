@@ -1,6 +1,6 @@
 {
   "name": "mdf-reader",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "Reads MDF YAML and returns helpful accessors",
   "main": "./dist/node/mdf-reader.cjs",
   "type": "module",

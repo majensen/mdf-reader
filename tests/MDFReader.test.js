@@ -54,6 +54,8 @@ it('merge works correctly', () => {
 });
 
 it('check PVs', () => {
+  expect(mdf.nodes('demographic').props('breed').type)
+    .toBe('value_set');
   expect(mdf.nodes('demographic').props('breed').valueSet())
     .toContain('Beagle');
 });

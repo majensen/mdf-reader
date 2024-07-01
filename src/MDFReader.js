@@ -265,7 +265,7 @@ export class MDFReader {
                      };
           this.props_[pr] = spec;
           if (pvs) {
-            if (!type) { type = "value_set"; }
+            if (!type) { spec.type = "value_set"; }
             this.props_[pr]["pvs"] = pvs;
             pvs.forEach( (v) => {
               if (!this.terms_[v]) {
