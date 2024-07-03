@@ -303,7 +303,7 @@ export class MDFReader {
       this.nodes_ = {};
       for (const nd in this.mdf.Nodes) {
         let spec = this.mdf.Nodes[nd];
-        this.nodes_[nd] = {_kind:"Node", handle:nd, desc:spec.desc};
+        this.nodes_[nd] = {_kind:"Node", handle:nd, desc:spec.Desc};
         this.nodes_[nd].props_ = {};
         if (spec.Props) {
           for (const pr of spec.Props) {

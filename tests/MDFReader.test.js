@@ -94,6 +94,11 @@ it('get a node, see that prop.owner is that node for all its props', () => {
   expect(study.props().every( p => p.owner === study )).toBeTruthy();
 });
 
+it('description captured', () => {
+  const study = mdf.nodes('study');
+  expect(study.desc).toMatch(/required to characterize each study/);
+});
+
 it('added parse hook and works', () => {
   expect(mdf.nodes('file').exports()).toStrictEqual([
     'file_name', 'drs_uri',
