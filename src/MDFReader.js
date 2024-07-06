@@ -14,10 +14,13 @@ function myProps(...nm) {
 }
 
 function myTags(key) {
+  if (!this.taglist_) {
+    this.taglist_ = [];
+  }
   if (key) {
     return (Object.fromEntries(this.taglist_))[key];
   }
-  return this.taglist_ ? this.taglist_ : [];
+  return this.taglist_;
 }
 
 function myValueSet(rdr) {
@@ -28,11 +31,11 @@ function myValueSet(rdr) {
 }
 
 function myTerms(rdr) {
-  if (this.termlist_) {
-    return this.termlist_
-      .map( (t) => rdr.terms_[t] );
+  if (!this.termlist_) {
+    this.termlist_ = [];
   }
-  else { return []; }
+  return this.termlist_
+    .map( (t) => rdr.terms_[t] );
 }  
 
 export class MDFReader {
