@@ -274,11 +274,9 @@ class MDFReader {
             this.props_[pr]["pvs"] = pvs;
             pvs.forEach( (v) => {
               if (!this.terms_[v]) {
-                //              this.terms_[v] = { handle:v, value:v, _kind:"Term" };
                 this.updateTerms(null, {Value:v, Origin:"<Local>"});
               }
             });
-            // this.props_[pr].terms_ = this.terms_; // kludge
             this.props_[pr].valueSet = myValueSet.bind(this.props_[pr], this);
           }
           if (tags) {
@@ -315,8 +313,9 @@ class MDFReader {
             if (!this.props_[pr]) {
               console.log('No property definition present for "%s" of node "%s"',
                           pr, nd);
-              this.props_[pr] = { handle:pr, _kind: 'Property'};
-              this.props_[pr].tags = myTags.bind(this.props[pr]);
+              this.props_[pr] = { handle:pr, _kind: 'Property',
+                                  tags:null, terms:null, type:'UNDEFINED'};
+              this.props_[pr].tags = myTags.bind(this.props_[pr]);
             }
             this.nodes_[nd].props_[pr] = this.props_[pr];
             this.props_[pr].owner = this.nodes_[nd];

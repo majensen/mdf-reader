@@ -228,7 +228,7 @@ PropDefinitions:
     Desc: Q.- form has "dose uom_ful"
     Src: STUDY_MED_ADMIN/SDAD/1
     Type: string
-  phase:
+  phase_not_present_in_propdefs:
     Desc: Where should this live?/What is?
     Src: COURSE INIT/CINIT/1
     Type: TBD

@@ -107,3 +107,23 @@ it('added parse hook and works', () => {
     'uuid', 'file_location']);
   expect(mdf.nodes('lab_exam').exports()).toStrictEqual([]);
 });
+
+it('no properties handled', () => {
+  const assay = mdf.nodes('assay');
+  expect(assay.props()).toStrictEqual([]);
+});
+
+if('unpropdeffed prop ok', () => {
+  const aa = mdf.nodes('agent_administration');
+  expect(aa.props('phase')._kind).toBe('Property');
+  expect(aa.props('phase').tags()).toStrictEqual([]);
+});
+
+it('all nodes are nodes', () => {
+  expect(mdf.nodes().every( n => n._kind === 'Node' )).toBeTruthy();
+});
+
+it('all props are props', () => {
+  expect(mdf.props().every( n => n._kind === 'Property' )).toBeTruthy();
+});
+
