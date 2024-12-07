@@ -3,9 +3,9 @@ let { MDFReader } = require('../dist/node/mdf-reader');
 const fs = require('node:fs');
 
 const icdc_yamls = [
-  "./icdc-model.yml",
-  "./icdc-model-props.yml",
-  "./icdc-manifest-props.yml",
+  "tests/icdc-model.yml",
+  "tests/icdc-model-props.yml",
+  "tests/icdc-manifest-props.yml",
 ];
 
 const icdc_data = icdc_yamls.map( (fn) => {

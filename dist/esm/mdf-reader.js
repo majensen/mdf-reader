@@ -335,7 +335,7 @@ class MDFReader {
             );
           });
           this.nodes_[nd].termlist_ = termlist_;
-          this.nodes_[nd].terms = myTerms(this.nodes_[nd]);
+          this.nodes_[nd].terms = myTerms.bind(this.nodes_[nd],this);
         }
         this.nodes_[nd].tags = myTags.bind(this.nodes_[nd]);
       }
@@ -400,7 +400,7 @@ class MDFReader {
             );
           });
           this.edges_[edge_nm].termlist_ = termlist_;
-          this.edges_[edge_nm].terms = myTerms(this.edges_[edge_nm]);
+          this.edges_[edge_nm].terms = myTerms.bind(this.edges_[edge_nm], this);
         }
         this.edges_[edge_nm].tags = myTags.bind(this.edges_[edge_nm]);
       }

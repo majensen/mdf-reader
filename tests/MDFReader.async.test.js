@@ -93,7 +93,7 @@ it('nodes have own props()', () => {
     expect(mdf.nodes('sample').props().map( (p) => p.handle ))
       .toStrictEqual(['sample_id', 'anatomic_site', 'participant_age_at_collection',
                       'sample_tumor_status', 'tumor_classification',
-                      'sample_description', 'id']);
+                      'sample_description', 'id', 'crdc_id']);
   });
 });
 
