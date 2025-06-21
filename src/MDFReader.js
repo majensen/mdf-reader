@@ -256,17 +256,31 @@ export class MDFReader {
       if (this.mdf.PropDefinitions) {
         for (const pr in this.mdf.PropDefinitions) {
           let handle = pr;
+          let item_type = null;
           let { Type: type, Enum:pvs, Req: is_required,
                 Desc: desc, Key: is_key, Nul: is_nullable,
                 Deprecated: is_deprecated, Strict: is_strict,
                 Tags: tags, Term: terms, 
               } = this.mdf.PropDefinitions[pr];
+          if (typeof(type) == 'object' &&
+              type.value_type &&
+              type.value_type == 'list') {
+            item_type = type['item_type'] || type['Enum'];
+            if (Array.isArray(item_type)) {
+              pvs = item_type;
+              item_type = 'value_set';
+            }
+            type = "list";
+          }
           let spec = { handle, desc, type,
                        is_required, is_key, is_nullable,
                        is_deprecated, is_strict,
                        tags, _kind:"Property",
                      };
           this.props_[pr] = spec;
+          if (item_type) {
+            this.props_[pr]["item_type"] = item_type;
+          }
           if (pvs) {
             if (!type) { spec.type = "value_set"; }
             this.props_[pr]["pvs"] = pvs;
@@ -379,7 +393,7 @@ export class MDFReader {
             myProps.bind(insts[end_pair["Src"]][end_pair["Dst"]]);
           if (tags) {
             for (const key in tags) {
-              updateTags(key, tags[key], insts[end_pair["Src"]][end_pair["Dst"]]);
+              this.updateTags(key, tags[key], insts[end_pair["Src"]][end_pair["Dst"]]);
             }
           }
           insts[end_pair["Src"]][end_pair["Dst"]].tags =
@@ -389,14 +403,14 @@ export class MDFReader {
         if (spec.Tags) {
           this.edges_[edge_nm]["tags"] = spec.Tags;
           for (const key in this.edges_[edge_nm]["tags"]) {
-            updateTags(key, this.edges_[edge_nm]["tags"][key], this.edges_[edge_nm]);
+            this.updateTags(key, this.edges_[edge_nm]["tags"][key], this.edges_[edge_nm]);
           }
         }
         if (spec.Term) {
           let termlist_ = [];
           spec.Term.forEach( (t) => {
             termlist_.push(
-              updateTerms(null, t)
+              this.updateTerms(null, t)
             );
           });
           this.edges_[edge_nm].termlist_ = termlist_;
