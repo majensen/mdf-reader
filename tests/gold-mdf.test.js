@@ -44,4 +44,21 @@ it('list property with enum', () => {
   let pr = mdf.nodes('study').props('study_data_types');
   expect(pr.valueSet())
     .toStrictEqual([ 'Genomic', 'Imaging', 'Clinical' ]);
+  expect(pr.item_type)
+    .toBe('value_set');
+  pr = mdf.nodes('study').props('study_data_types_enum');
+  expect(pr.valueSet())
+    .toStrictEqual([ 'Genomic', 'Imaging', 'Clinical' ]);
+  expect(pr.item_type)
+    .toBe('value_set');
 });
+
+it('is_strict is set/clear', () => {
+  let pr = mdf.nodes('study').props('adult_or_childhood_study');
+  expect(pr.is_strict)
+    .toBeFalsy();
+  pr = mdf.nodes('participant').props('race');
+  expect(pr.is_strict)
+    .toBeTruthy();
+});
+
