@@ -40,8 +40,29 @@ function myTerms(rdr) {
     .map( (t) => rdr.terms_[t] );
 }  
 
+function compositeKeyHook() {
+  this.nodes()
+    .forEach( (node) => {
+      node.composite_key_props = () => {
+        if (this.mdf.Nodes[node.handle].CompKey) {
+          let ck = this.mdf.Nodes[node.handle].CompKey;
+          return ck
+            .map( (name) => {
+              let m = name.match("^(?:([^.]*)[.])?([^.]*)");
+              if (!m[1]) {
+                m[1] = node.handle;
+              }
+              return this.nodes(m[1]).props(m[2])
+            });
+        } else {
+          return [];
+        }
+      };
+    });
+}
+
 class MDFReader {
-  static #parse_hooks = [];
+  static #parse_hooks = [ compositeKeyHook ];
   static add_parse_hook(hook) {
     this.#parse_hooks.push(hook);
     return this;
@@ -258,17 +279,31 @@ class MDFReader {
       if (this.mdf.PropDefinitions) {
         for (const pr in this.mdf.PropDefinitions) {
           let handle = pr;
+          let item_type = null;
           let { Type: type, Enum:pvs, Req: is_required,
                 Desc: desc, Key: is_key, Nul: is_nullable,
                 Deprecated: is_deprecated, Strict: is_strict,
                 Tags: tags, Term: terms, 
               } = this.mdf.PropDefinitions[pr];
+          if (typeof(type) == 'object' &&
+              type.value_type &&
+              type.value_type == 'list') {
+            item_type = type['item_type'] || type['Enum'];
+            if (Array.isArray(item_type)) {
+              pvs = item_type;
+              item_type = 'value_set';
+            }
+            type = "list";
+          }
           let spec = { handle, desc, type,
                        is_required, is_key, is_nullable,
                        is_deprecated, is_strict,
                        tags, _kind:"Property",
                      };
           this.props_[pr] = spec;
+          if (item_type) {
+            this.props_[pr]["item_type"] = item_type;
+          }
           if (pvs) {
             if (!type) { spec.type = "value_set"; }
             this.props_[pr]["pvs"] = pvs;
@@ -306,10 +341,19 @@ class MDFReader {
       this.nodes_ = {};
       for (const nd in this.mdf.Nodes) {
         let spec = this.mdf.Nodes[nd];
+        let univ = [];
+        if (this.mdf.UniversalNodeProperties) {
+          univ = Object.values(this.mdf.UniversalNodeProperties).flatMap(x => x);
+        }
+        let pr_spec = spec.Props || [];
+        pr_spec = pr_spec
+          .concat(
+            univ.flatMap(x => x)
+          );
         this.nodes_[nd] = {_kind:"Node", handle:nd, desc:spec.Desc};
         this.nodes_[nd].props_ = {};
-        if (spec.Props) {
-          for (const pr of spec.Props) {
+        if (pr_spec) {
+          for (const pr of pr_spec) {
             if (!this.props_[pr]) {
               console.log('No property definition present for "%s" of node "%s"',
                           pr, nd);
@@ -353,6 +397,10 @@ class MDFReader {
         let mul_def = spec.Mul;
         this.edges_[edge_nm] = {_kind:"EdgeType", handle:edge_nm, desc:spec.desc };
         let insts = {};
+        let univ = [];
+        if (this.mdf.UniversalRelationshipProperties) {
+          univ = Object.values(this.mdf.UniversalRelationshipProperties).flatMap(x => x);
+        }
         for (const end_pair of spec.Ends) {
           let {Mul, Tags:tags} = end_pair;
           if (!insts[end_pair["Src"]]) {
@@ -364,8 +412,13 @@ class MDFReader {
              src: end_pair.Src, dst: end_pair.Dst, type: edge_nm,
              tags};
           insts[end_pair["Src"]][end_pair["Dst"]].props_ = {};
-          if (this.mdf.Relationships[edge_nm].Props) {
-            for (const pr in this.mdf.Relationships[edge_nm].Props) {
+          let pr_spec = this.mdf.Relationships[edge_nm].Props || [];
+          pr_spec = pr_spec
+            .concat(
+              univ.flatMap(x => x)
+            );
+          if (pr_spec.length) {
+            for (const pr in pr_spec) {
               if (!this.props_[pr]) {
                 console.log('No property defintion present for "%s" of edge type "%s"',
                             pr, edge_nm);
@@ -381,7 +434,7 @@ class MDFReader {
             myProps.bind(insts[end_pair["Src"]][end_pair["Dst"]]);
           if (tags) {
             for (const key in tags) {
-              updateTags(key, tags[key], insts[end_pair["Src"]][end_pair["Dst"]]);
+              this.updateTags(key, tags[key], insts[end_pair["Src"]][end_pair["Dst"]]);
             }
           }
           insts[end_pair["Src"]][end_pair["Dst"]].tags =
@@ -391,14 +444,14 @@ class MDFReader {
         if (spec.Tags) {
           this.edges_[edge_nm]["tags"] = spec.Tags;
           for (const key in this.edges_[edge_nm]["tags"]) {
-            updateTags(key, this.edges_[edge_nm]["tags"][key], this.edges_[edge_nm]);
+            this.updateTags(key, this.edges_[edge_nm]["tags"][key], this.edges_[edge_nm]);
           }
         }
         if (spec.Term) {
           let termlist_ = [];
           spec.Term.forEach( (t) => {
             termlist_.push(
-              updateTerms(null, t)
+              this.updateTerms(null, t)
             );
           });
           this.edges_[edge_nm].termlist_ = termlist_;

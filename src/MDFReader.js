@@ -38,8 +38,29 @@ function myTerms(rdr) {
     .map( (t) => rdr.terms_[t] );
 }  
 
+function compositeKeyHook() {
+  this.nodes()
+    .forEach( (node) => {
+      node.composite_key_props = () => {
+        if (this.mdf.Nodes[node.handle].CompKey) {
+          let ck = this.mdf.Nodes[node.handle].CompKey;
+          return ck
+            .map( (name) => {
+              let m = name.match("^(?:([^.]*)[.])?([^.]*)");
+              if (!m[1]) {
+                m[1] = node.handle;
+              }
+              return this.nodes(m[1]).props(m[2])
+            });
+        } else {
+          return [];
+        }
+      };
+    });
+}
+
 export class MDFReader {
-  static #parse_hooks = [];
+  static #parse_hooks = [ compositeKeyHook ];
   static add_parse_hook(hook) {
     this.#parse_hooks.push(hook);
     return this;

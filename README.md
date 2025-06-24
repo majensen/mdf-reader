@@ -174,6 +174,10 @@ Return an Array of term Objects annotating these entities in the MDF.
 
 * `prop.valueSet()`
 
+_Composite Key feature_: Return an Array of properties that comprise a node's composite key
+
+* `node.composite_key_props()`
+
 Return an Array of acceptable values if a property has an acceptable value list or "Enum" (i.e., if `prop.type == 'value_set'`). Note these are the actual values to be used in data, not the term handles. So, for this MDF:
 
 ```yaml

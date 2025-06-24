@@ -78,3 +78,21 @@ it('is_required is set/clear', () => {
   expect(prs.transaction_date.is_required)
     .toStrictEqual('No');
 });
+
+it('has composite_key_props', () => {
+  let ppt = mdf.nodes('participant');
+  let visit = mdf.nodes('visit');
+  let finding = mdf.nodes('finding');
+  expect(ppt.composite_key_props().length)
+    .toBe(0);
+  expect(visit.composite_key_props().length)
+    .toBe(2);
+  expect(finding.composite_key_props().length)
+    .toBe(4);
+  expect(visit.props('visit_id').is_key)
+    .toBeTruthy();
+  expect(finding.props('finding_id').is_key)
+    .toBeTruthy();
+  expect(finding.props('test_name').is_key)
+    .toBeFalsy();  
+});
