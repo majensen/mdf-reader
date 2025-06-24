@@ -62,3 +62,19 @@ it('is_strict is set/clear', () => {
     .toBeTruthy();
 });
 
+it('is_required is set/clear', () => {
+  let nd =  mdf.nodes('diagnosis');
+  let prs = ['diagnosis','id','date','transaction_id','transaction_date']
+      .map(pr => [pr, nd.props(pr)]);
+  prs = Object.fromEntries(prs);
+  expect(prs.diagnosis.is_required == 'Preferred')
+    .toBeTruthy();
+  expect(prs.id.is_required)
+    .toBeTruthy();
+  expect(prs.date.is_required)
+    .toBeTruthy();
+  expect(prs.transaction_id.is_required)
+    .toBeFalsy();  
+  expect(prs.transaction_date.is_required)
+    .toStrictEqual('No');
+});

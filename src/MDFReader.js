@@ -318,10 +318,19 @@ export class MDFReader {
       this.nodes_ = {};
       for (const nd in this.mdf.Nodes) {
         let spec = this.mdf.Nodes[nd];
+        let univ = [];
+        if (this.mdf.UniversalNodeProperties) {
+          univ = Object.values(this.mdf.UniversalNodeProperties).flatMap(x => x);
+        }
+        let pr_spec = spec.Props || [];
+        pr_spec = pr_spec
+          .concat(
+            univ.flatMap(x => x)
+          );
         this.nodes_[nd] = {_kind:"Node", handle:nd, desc:spec.Desc};
         this.nodes_[nd].props_ = {};
-        if (spec.Props) {
-          for (const pr of spec.Props) {
+        if (pr_spec) {
+          for (const pr of pr_spec) {
             if (!this.props_[pr]) {
               console.log('No property definition present for "%s" of node "%s"',
                           pr, nd);
@@ -365,6 +374,10 @@ export class MDFReader {
         let mul_def = spec.Mul;
         this.edges_[edge_nm] = {_kind:"EdgeType", handle:edge_nm, desc:spec.desc };
         let insts = {};
+        let univ = [];
+        if (this.mdf.UniversalRelationshipProperties) {
+          univ = Object.values(this.mdf.UniversalRelationshipProperties).flatMap(x => x);
+        }
         for (const end_pair of spec.Ends) {
           let {Mul, Tags:tags} = end_pair;
           if (!insts[end_pair["Src"]]) {
@@ -376,8 +389,13 @@ export class MDFReader {
              src: end_pair.Src, dst: end_pair.Dst, type: edge_nm,
              tags};
           insts[end_pair["Src"]][end_pair["Dst"]].props_ = {};
-          if (this.mdf.Relationships[edge_nm].Props) {
-            for (const pr in this.mdf.Relationships[edge_nm].Props) {
+          let pr_spec = this.mdf.Relationships[edge_nm].Props || [];
+          pr_spec = pr_spec
+            .concat(
+              univ.flatMap(x => x)
+            );
+          if (pr_spec.length) {
+            for (const pr in pr_spec) {
               if (!this.props_[pr]) {
                 console.log('No property defintion present for "%s" of edge type "%s"',
                             pr, edge_nm);
